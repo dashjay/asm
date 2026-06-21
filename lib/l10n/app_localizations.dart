@@ -494,6 +494,18 @@ abstract class AppLocalizations {
   /// **'Please fill in endpoint, bucket, access key, and secret key'**
   String get s3ConfigIncomplete;
 
+  /// No description provided for @s3NetworkAccessDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reach the S3 endpoint. Check network access and allow this app to use Wi‑Fi and mobile data in system settings.'**
+  String get s3NetworkAccessDenied;
+
+  /// No description provided for @s3InvalidEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint URL is invalid. Use https://your-account.r2.cloudflarestorage.com'**
+  String get s3InvalidEndpoint;
+
   /// No description provided for @assetTrends.
   ///
   /// In en, this message translates to:

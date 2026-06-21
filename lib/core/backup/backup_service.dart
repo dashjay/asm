@@ -13,6 +13,7 @@ import '../app_constants.dart';
 import '../providers/providers.dart';
 import '../../data/repositories/repositories.dart';
 import 'backup_io.dart' if (dart.library.js_interop) 'backup_stub.dart';
+import 'network_access.dart';
 
 final secureStorageProvider = Provider((_) => const FlutterSecureStorage());
 
@@ -65,6 +66,8 @@ class BackupService {
         secretKey.isEmpty) {
       throw StateError('s3_config_incomplete');
     }
+
+    await ensureNetworkAccess(endpoint);
 
     final dir = await getApplicationDocumentsDirectory();
     final source = await prepareDatabaseForCopy(_ref, dir.path);
