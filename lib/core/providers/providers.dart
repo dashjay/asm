@@ -173,8 +173,8 @@ Future<HomeSummary> _computeHomeSummary({
     );
   }
 
-  final balances = await sessionRepo.balancesForSession(latest.id);
-  final converter = await fxRepo.converterForSnapshot(latest.fxSnapshotId);
+  final balances = await sessionRepo.balancesLatest();
+  final converter = await fxRepo.latestConverter();
 
   final netWorthByCurrency = {
     for (final c in Currency.values)
