@@ -87,8 +87,8 @@ class _FamilyTrendChartState extends ConsumerState<FamilyTrendChart> {
         final paddedMaxY = maxY + padding;
         final yInterval = niceInterval(paddedMinY, paddedMaxY);
 
-        // X is the point index; keep the data line at one dot per record and
-        // only subsample the axis labels so they never overlap.
+        // X is the point index; familyTrend already emits one point per day.
+        // Subsample axis labels so they never overlap.
         final labelIndices = visibleLabelIndices(points.length);
         final maxX = forecastSpots.isNotEmpty
             ? forecastSpots.last.x

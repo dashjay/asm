@@ -386,7 +386,12 @@ class SessionRepository {
     ];
   }
 
-  /// Computes the family net worth at every recorded session.
+  /// Computes the family net worth trend, emitting at most one point per
+  /// calendar day (the last session of that day).
+  ///
+  /// Net worth at each point reflects the cumulative latest balance per
+  /// account as of that day, so many accounts created on the same day
+  /// collapse to a single chart dot instead of one per initial snapshot.
   ///
   /// Performance: loads all sessions, snapshots, accounts and FX rates in four
   /// queries and joins them in memory, rather than issuing several queries per
@@ -395,13 +400,10 @@ class SessionRepository {
     required Currency displayCurrency,
     DateTime? since,
   }) async {
-    var sessions = await (_db.select(_db.updateSessions)
+    final allSessions = await (_db.select(_db.updateSessions)
           ..orderBy([(t) => OrderingTerm.asc(t.recordedAt)]))
         .get();
-    if (since != null) {
-      sessions = sessions.where((s) => s.recordedAt.isAfter(since)).toList();
-    }
-    if (sessions.isEmpty) return [];
+    if (allSessions.isEmpty) return [];
 
     final accounts = await _db.select(_db.accounts).get();
     final accountMap = {for (final a in accounts) a.id: a};
@@ -423,20 +425,50 @@ class SessionRepository {
           );
     }
 
+    final latestByAccount = <int, BalanceSnapshot>{};
+    if (since != null) {
+      for (final session in allSessions) {
+        if (session.recordedAt.isAfter(since)) continue;
+        for (final snapshot in snapshotsBySession[session.id] ?? const []) {
+          if (accountMap.containsKey(snapshot.accountId)) {
+            latestByAccount[snapshot.accountId] = snapshot;
+          }
+        }
+      }
+    }
+
+    final sessions = since == null
+        ? allSessions
+        : allSessions.where((s) => s.recordedAt.isAfter(since)).toList();
+    if (sessions.isEmpty) return [];
+
     final converterCache = <int, CurrencyConverter>{};
     final result = <({UpdateSession session, double netWorth})>[];
-    for (final session in sessions) {
-      final balances = (snapshotsBySession[session.id] ?? [])
-          .where((s) => accountMap.containsKey(s.accountId))
-          .map((s) {
-        final account = accountMap[s.accountId]!;
-        return AccountBalance(
-          accountId: s.accountId,
-          category: AccountCategory.fromString(account.category),
-          currency: Currency.fromString(account.currency),
-          amount: s.amount,
-        );
-      }).toList();
+    for (var i = 0; i < sessions.length; i++) {
+      final session = sessions[i];
+      for (final snapshot in snapshotsBySession[session.id] ?? const []) {
+        if (accountMap.containsKey(snapshot.accountId)) {
+          latestByAccount[snapshot.accountId] = snapshot;
+        }
+      }
+
+      final isLastSessionOfDay = i == sessions.length - 1 ||
+          !_isSameCalendarDay(
+            session.recordedAt,
+            sessions[i + 1].recordedAt,
+          );
+      if (!isLastSessionOfDay) continue;
+
+      final balances = [
+        for (final account in accounts)
+          if (!account.isArchived && latestByAccount.containsKey(account.id))
+            AccountBalance(
+              accountId: account.id,
+              category: AccountCategory.fromString(account.category),
+              currency: Currency.fromString(account.currency),
+              amount: latestByAccount[account.id]!.amount,
+            ),
+      ];
 
       final converter = converterCache.putIfAbsent(
         session.fxSnapshotId,
@@ -563,3 +595,6 @@ class S3Config {
   final String secretKey;
   final String prefix;
 }
+
+bool _isSameCalendarDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;

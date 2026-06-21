@@ -83,4 +83,36 @@ void main() {
     expect(balances, hasLength(1));
     expect(balances.single.accountId, activeId);
   });
+
+  test('familyTrend downsamples same-day sessions to one cumulative point', () async {
+    final memberId = await memberRepo.create('Test');
+    await accountRepo.create(
+      memberId: memberId,
+      name: 'Savings',
+      category: AccountCategory.current,
+      currency: Currency.cny,
+      initialBalance: 1_000_000,
+    );
+    await accountRepo.create(
+      memberId: memberId,
+      name: 'Brokerage',
+      category: AccountCategory.investment,
+      currency: Currency.cny,
+      initialBalance: 500_000,
+    );
+    await accountRepo.create(
+      memberId: memberId,
+      name: 'Mortgage',
+      category: AccountCategory.liability,
+      currency: Currency.cny,
+      initialBalance: 200_000,
+    );
+
+    final allSessions = await sessionRepo.watchAll().first;
+    expect(allSessions, hasLength(3));
+
+    final trend = await sessionRepo.familyTrend(displayCurrency: Currency.cny);
+    expect(trend, hasLength(1));
+    expect(trend.single.netWorth, 1_300_000);
+  });
 }
