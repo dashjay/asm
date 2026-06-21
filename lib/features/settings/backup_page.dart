@@ -20,6 +20,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   final _s3PrefixController = TextEditingController();
   bool _loaded = false;
   bool _uploading = false;
+  bool _importing = false;
 
   @override
   void initState() {
@@ -126,6 +127,69 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     }
   }
 
+  Future<void> _importBackup() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.importBackupConfirmTitle),
+        content: Text(l10n.importBackupConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _importing = true);
+    try {
+      final result = await ref.read(backupServiceProvider).importDatabase();
+      if (!mounted) return;
+
+      switch (result) {
+        case ImportDatabaseResult.cancelled:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.importCancelled)),
+          );
+        case ImportDatabaseResult.success:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.importCompleteRestart)),
+          );
+      }
+    } on UnsupportedError {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.backupWebImportUnsupported)),
+        );
+      }
+    } on StateError catch (e) {
+      if (!mounted) return;
+      final message = switch (e.message) {
+        'invalid_backup_file' => l10n.invalidBackupFile,
+        'backup_file_unreadable' => l10n.backupFileUnreadable,
+        _ => l10n.importFailed(e.message),
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.importFailed('$e'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -167,23 +231,14 @@ class _BackupPageState extends ConsumerState<BackupPage> {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: () async {
-              try {
-                await ref.read(backupServiceProvider).importDatabase();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.importCompleteRestart)),
-                  );
-                }
-              } on UnsupportedError {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.backupWebImportUnsupported)),
-                  );
-                }
-              }
-            },
-            icon: const Icon(Icons.download),
+            onPressed: _importing ? null : _importBackup,
+            icon: _importing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
             label: Text(l10n.importBackup),
           ),
           const SizedBox(height: 24),

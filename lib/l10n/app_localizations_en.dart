@@ -173,6 +173,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importBackup => 'Import Backup';
 
   @override
+  String get importBackupConfirmTitle => 'Restore backup?';
+
+  @override
+  String get importBackupConfirmMessage =>
+      'This will replace all current data with the selected backup file. This cannot be undone.';
+
+  @override
+  String get importCancelled => 'Import cancelled';
+
+  @override
+  String importFailed(String error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String get invalidBackupFile =>
+      'The selected file is not a valid ASM database backup';
+
+  @override
+  String get backupFileUnreadable =>
+      'Could not read the selected file. Try saving it locally first, then import again.';
+
+  @override
   String get s3BackupReserved => 'S3 Backup';
 
   @override
