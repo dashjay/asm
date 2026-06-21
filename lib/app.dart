@@ -25,8 +25,6 @@ class _AsmAppState extends ConsumerState<AsmApp> {
   }
 
   Future<void> _bootstrap() async {
-    final db = ref.read(databaseProvider);
-    await db.seedIfEmpty();
     final scheduler = NotificationScheduler(
       ref.read(accountRepositoryProvider),
       ref.read(settingsRepositoryProvider),

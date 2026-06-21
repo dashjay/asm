@@ -2609,6 +2609,18 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _s3PrefixMeta = const VerificationMeta(
+    's3Prefix',
+  );
+  @override
+  late final GeneratedColumn<String> s3Prefix = GeneratedColumn<String>(
+    's3_prefix',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _localeLanguageCodeMeta =
       const VerificationMeta('localeLanguageCode');
   @override
@@ -2630,6 +2642,7 @@ class $AppSettingsTable extends AppSettings
     s3Endpoint,
     s3Bucket,
     s3AccessKey,
+    s3Prefix,
     localeLanguageCode,
   ];
   @override
@@ -2695,6 +2708,12 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('s3_prefix')) {
+      context.handle(
+        _s3PrefixMeta,
+        s3Prefix.isAcceptableOrUnknown(data['s3_prefix']!, _s3PrefixMeta),
+      );
+    }
     if (data.containsKey('locale_language_code')) {
       context.handle(
         _localeLanguageCodeMeta,
@@ -2741,6 +2760,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.string,
         data['${effectivePrefix}s3_access_key'],
       )!,
+      s3Prefix: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}s3_prefix'],
+      )!,
       localeLanguageCode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}locale_language_code'],
@@ -2762,6 +2785,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final String s3Endpoint;
   final String s3Bucket;
   final String s3AccessKey;
+  final String s3Prefix;
   final String localeLanguageCode;
   const AppSetting({
     required this.id,
@@ -2771,6 +2795,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.s3Endpoint,
     required this.s3Bucket,
     required this.s3AccessKey,
+    required this.s3Prefix,
     required this.localeLanguageCode,
   });
   @override
@@ -2787,6 +2812,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['s3_endpoint'] = Variable<String>(s3Endpoint);
     map['s3_bucket'] = Variable<String>(s3Bucket);
     map['s3_access_key'] = Variable<String>(s3AccessKey);
+    map['s3_prefix'] = Variable<String>(s3Prefix);
     map['locale_language_code'] = Variable<String>(localeLanguageCode);
     return map;
   }
@@ -2800,6 +2826,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       s3Endpoint: Value(s3Endpoint),
       s3Bucket: Value(s3Bucket),
       s3AccessKey: Value(s3AccessKey),
+      s3Prefix: Value(s3Prefix),
       localeLanguageCode: Value(localeLanguageCode),
     );
   }
@@ -2821,6 +2848,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       s3Endpoint: serializer.fromJson<String>(json['s3Endpoint']),
       s3Bucket: serializer.fromJson<String>(json['s3Bucket']),
       s3AccessKey: serializer.fromJson<String>(json['s3AccessKey']),
+      s3Prefix: serializer.fromJson<String>(json['s3Prefix']),
       localeLanguageCode: serializer.fromJson<String>(
         json['localeLanguageCode'],
       ),
@@ -2841,6 +2869,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       's3Endpoint': serializer.toJson<String>(s3Endpoint),
       's3Bucket': serializer.toJson<String>(s3Bucket),
       's3AccessKey': serializer.toJson<String>(s3AccessKey),
+      's3Prefix': serializer.toJson<String>(s3Prefix),
       'localeLanguageCode': serializer.toJson<String>(localeLanguageCode),
     };
   }
@@ -2853,6 +2882,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? s3Endpoint,
     String? s3Bucket,
     String? s3AccessKey,
+    String? s3Prefix,
     String? localeLanguageCode,
   }) => AppSetting(
     id: id ?? this.id,
@@ -2864,6 +2894,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     s3Endpoint: s3Endpoint ?? this.s3Endpoint,
     s3Bucket: s3Bucket ?? this.s3Bucket,
     s3AccessKey: s3AccessKey ?? this.s3AccessKey,
+    s3Prefix: s3Prefix ?? this.s3Prefix,
     localeLanguageCode: localeLanguageCode ?? this.localeLanguageCode,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
@@ -2885,6 +2916,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       s3AccessKey: data.s3AccessKey.present
           ? data.s3AccessKey.value
           : this.s3AccessKey,
+      s3Prefix: data.s3Prefix.present ? data.s3Prefix.value : this.s3Prefix,
       localeLanguageCode: data.localeLanguageCode.present
           ? data.localeLanguageCode.value
           : this.localeLanguageCode,
@@ -2901,6 +2933,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('s3Endpoint: $s3Endpoint, ')
           ..write('s3Bucket: $s3Bucket, ')
           ..write('s3AccessKey: $s3AccessKey, ')
+          ..write('s3Prefix: $s3Prefix, ')
           ..write('localeLanguageCode: $localeLanguageCode')
           ..write(')'))
         .toString();
@@ -2915,6 +2948,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     s3Endpoint,
     s3Bucket,
     s3AccessKey,
+    s3Prefix,
     localeLanguageCode,
   );
   @override
@@ -2929,6 +2963,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.s3Endpoint == this.s3Endpoint &&
           other.s3Bucket == this.s3Bucket &&
           other.s3AccessKey == this.s3AccessKey &&
+          other.s3Prefix == this.s3Prefix &&
           other.localeLanguageCode == this.localeLanguageCode);
 }
 
@@ -2940,6 +2975,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> s3Endpoint;
   final Value<String> s3Bucket;
   final Value<String> s3AccessKey;
+  final Value<String> s3Prefix;
   final Value<String> localeLanguageCode;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
@@ -2949,6 +2985,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.s3Endpoint = const Value.absent(),
     this.s3Bucket = const Value.absent(),
     this.s3AccessKey = const Value.absent(),
+    this.s3Prefix = const Value.absent(),
     this.localeLanguageCode = const Value.absent(),
   });
   AppSettingsCompanion.insert({
@@ -2959,6 +2996,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.s3Endpoint = const Value.absent(),
     this.s3Bucket = const Value.absent(),
     this.s3AccessKey = const Value.absent(),
+    this.s3Prefix = const Value.absent(),
     this.localeLanguageCode = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
@@ -2969,6 +3007,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? s3Endpoint,
     Expression<String>? s3Bucket,
     Expression<String>? s3AccessKey,
+    Expression<String>? s3Prefix,
     Expression<String>? localeLanguageCode,
   }) {
     return RawValuesInsertable({
@@ -2981,6 +3020,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (s3Endpoint != null) 's3_endpoint': s3Endpoint,
       if (s3Bucket != null) 's3_bucket': s3Bucket,
       if (s3AccessKey != null) 's3_access_key': s3AccessKey,
+      if (s3Prefix != null) 's3_prefix': s3Prefix,
       if (localeLanguageCode != null)
         'locale_language_code': localeLanguageCode,
     });
@@ -2994,6 +3034,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? s3Endpoint,
     Value<String>? s3Bucket,
     Value<String>? s3AccessKey,
+    Value<String>? s3Prefix,
     Value<String>? localeLanguageCode,
   }) {
     return AppSettingsCompanion(
@@ -3006,6 +3047,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       s3Endpoint: s3Endpoint ?? this.s3Endpoint,
       s3Bucket: s3Bucket ?? this.s3Bucket,
       s3AccessKey: s3AccessKey ?? this.s3AccessKey,
+      s3Prefix: s3Prefix ?? this.s3Prefix,
       localeLanguageCode: localeLanguageCode ?? this.localeLanguageCode,
     );
   }
@@ -3038,6 +3080,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (s3AccessKey.present) {
       map['s3_access_key'] = Variable<String>(s3AccessKey.value);
     }
+    if (s3Prefix.present) {
+      map['s3_prefix'] = Variable<String>(s3Prefix.value);
+    }
     if (localeLanguageCode.present) {
       map['locale_language_code'] = Variable<String>(localeLanguageCode.value);
     }
@@ -3054,6 +3099,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('s3Endpoint: $s3Endpoint, ')
           ..write('s3Bucket: $s3Bucket, ')
           ..write('s3AccessKey: $s3AccessKey, ')
+          ..write('s3Prefix: $s3Prefix, ')
           ..write('localeLanguageCode: $localeLanguageCode')
           ..write(')'))
         .toString();
@@ -5492,6 +5538,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> s3Endpoint,
       Value<String> s3Bucket,
       Value<String> s3AccessKey,
+      Value<String> s3Prefix,
       Value<String> localeLanguageCode,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
@@ -5503,6 +5550,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> s3Endpoint,
       Value<String> s3Bucket,
       Value<String> s3AccessKey,
+      Value<String> s3Prefix,
       Value<String> localeLanguageCode,
     });
 
@@ -5547,6 +5595,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get s3AccessKey => $composableBuilder(
     column: $table.s3AccessKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get s3Prefix => $composableBuilder(
+    column: $table.s3Prefix,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5600,6 +5653,11 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get s3Prefix => $composableBuilder(
+    column: $table.s3Prefix,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get localeLanguageCode => $composableBuilder(
     column: $table.localeLanguageCode,
     builder: (column) => ColumnOrderings(column),
@@ -5646,6 +5704,9 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get s3Prefix =>
+      $composableBuilder(column: $table.s3Prefix, builder: (column) => column);
+
   GeneratedColumn<String> get localeLanguageCode => $composableBuilder(
     column: $table.localeLanguageCode,
     builder: (column) => column,
@@ -5691,6 +5752,7 @@ class $$AppSettingsTableTableManager
                 Value<String> s3Endpoint = const Value.absent(),
                 Value<String> s3Bucket = const Value.absent(),
                 Value<String> s3AccessKey = const Value.absent(),
+                Value<String> s3Prefix = const Value.absent(),
                 Value<String> localeLanguageCode = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
@@ -5700,6 +5762,7 @@ class $$AppSettingsTableTableManager
                 s3Endpoint: s3Endpoint,
                 s3Bucket: s3Bucket,
                 s3AccessKey: s3AccessKey,
+                s3Prefix: s3Prefix,
                 localeLanguageCode: localeLanguageCode,
               ),
           createCompanionCallback:
@@ -5712,6 +5775,7 @@ class $$AppSettingsTableTableManager
                 Value<String> s3Endpoint = const Value.absent(),
                 Value<String> s3Bucket = const Value.absent(),
                 Value<String> s3AccessKey = const Value.absent(),
+                Value<String> s3Prefix = const Value.absent(),
                 Value<String> localeLanguageCode = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
@@ -5721,6 +5785,7 @@ class $$AppSettingsTableTableManager
                 s3Endpoint: s3Endpoint,
                 s3Bucket: s3Bucket,
                 s3AccessKey: s3AccessKey,
+                s3Prefix: s3Prefix,
                 localeLanguageCode: localeLanguageCode,
               ),
           withReferenceMapper: (p0) => p0

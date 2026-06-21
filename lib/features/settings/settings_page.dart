@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/backup/backup_service.dart';
 import '../../core/notifications/notification_scheduler.dart';
 import '../../core/providers/providers.dart';
 import '../../domain/models/enums.dart';
@@ -17,10 +17,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _percentController = TextEditingController();
   final _amountController = TextEditingController();
-  final _s3EndpointController = TextEditingController();
-  final _s3BucketController = TextEditingController();
-  final _s3AccessKeyController = TextEditingController();
-  final _s3SecretController = TextEditingController();
   bool _loaded = false;
 
   @override
@@ -33,11 +29,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final settings = await ref.read(settingsRepositoryProvider).get();
     _percentController.text = settings.largeChangeThresholdPercent.toString();
     _amountController.text = settings.largeChangeThresholdAmount.toString();
-    _s3EndpointController.text = settings.s3Endpoint;
-    _s3BucketController.text = settings.s3Bucket;
-    _s3AccessKeyController.text = settings.s3AccessKey;
-    final secret = await ref.read(backupServiceProvider).loadS3Secret();
-    _s3SecretController.text = secret ?? '';
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -45,10 +36,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _percentController.dispose();
     _amountController.dispose();
-    _s3EndpointController.dispose();
-    _s3BucketController.dispose();
-    _s3AccessKeyController.dispose();
-    _s3SecretController.dispose();
     super.dispose();
   }
 
@@ -61,21 +48,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.thresholdsSaved)),
-      );
-    }
-  }
-
-  Future<void> _saveS3() async {
-    final l10n = AppLocalizations.of(context)!;
-    await ref.read(settingsRepositoryProvider).updateS3Config(
-          endpoint: _s3EndpointController.text.trim(),
-          bucket: _s3BucketController.text.trim(),
-          accessKey: _s3AccessKeyController.text.trim(),
-        );
-    await ref.read(backupServiceProvider).saveS3Secret(_s3SecretController.text);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.s3ConfigSaved)),
       );
     }
   }
@@ -158,79 +130,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 12),
           FilledButton(onPressed: _saveThresholds, child: Text(l10n.saveThresholds)),
           const SizedBox(height: 24),
-          Text(l10n.dataBackup, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            onPressed: () async {
-              try {
-                await ref.read(backupServiceProvider).exportDatabase();
-              } on UnsupportedError {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.backupWebExportUnsupported)),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.exportFailed('$e'))),
-                  );
-                }
-              }
-            },
-            icon: const Icon(Icons.upload_file),
-            label: Text(l10n.exportLocalBackup),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () async {
-              try {
-                await ref.read(backupServiceProvider).importDatabase();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.importCompleteRestart)),
-                  );
-                }
-              } on UnsupportedError {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.backupWebImportUnsupported)),
-                  );
-                }
-              }
-            },
-            icon: const Icon(Icons.download),
-            label: Text(l10n.importBackup),
-          ),
-          const SizedBox(height: 24),
-          Text(l10n.s3BackupReserved, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _s3EndpointController,
-            decoration: InputDecoration(labelText: l10n.s3Endpoint),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _s3BucketController,
-            decoration: InputDecoration(labelText: l10n.s3Bucket),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _s3AccessKeyController,
-            decoration: InputDecoration(labelText: l10n.s3AccessKey),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _s3SecretController,
-            obscureText: true,
-            decoration: InputDecoration(labelText: l10n.s3SecretKey),
-          ),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: _saveS3, child: Text(l10n.saveS3Config)),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: null,
-            child: Text(l10n.uploadToS3ComingSoon),
+          ListTile(
+            title: Text(l10n.dataBackup),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/backup'),
           ),
           const SizedBox(height: 64),
         ],

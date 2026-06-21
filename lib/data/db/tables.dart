@@ -67,6 +67,7 @@ class AppSettings extends Table {
   TextColumn get s3Endpoint => text().withDefault(const Constant(''))();
   TextColumn get s3Bucket => text().withDefault(const Constant(''))();
   TextColumn get s3AccessKey => text().withDefault(const Constant(''))();
+  TextColumn get s3Prefix => text().withDefault(const Constant(''))();
   TextColumn get localeLanguageCode =>
       text().withDefault(const Constant('en'))();
 

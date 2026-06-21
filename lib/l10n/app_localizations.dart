@@ -383,8 +383,14 @@ abstract class AppLocalizations {
   /// No description provided for @s3BackupReserved.
   ///
   /// In en, this message translates to:
-  /// **'S3 Backup (Coming Soon)'**
+  /// **'S3 Backup'**
   String get s3BackupReserved;
+
+  /// No description provided for @s3Backup.
+  ///
+  /// In en, this message translates to:
+  /// **'S3 Backup'**
+  String get s3Backup;
 
   /// No description provided for @s3Endpoint.
   ///
@@ -410,6 +416,12 @@ abstract class AppLocalizations {
   /// **'Secret Key'**
   String get s3SecretKey;
 
+  /// No description provided for @s3Prefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Object Key Prefix'**
+  String get s3Prefix;
+
   /// No description provided for @saveS3Config.
   ///
   /// In en, this message translates to:
@@ -422,11 +434,29 @@ abstract class AppLocalizations {
   /// **'S3 config saved'**
   String get s3ConfigSaved;
 
-  /// No description provided for @uploadToS3ComingSoon.
+  /// No description provided for @s3Upload.
   ///
   /// In en, this message translates to:
-  /// **'Upload to S3 (Coming Soon)'**
-  String get uploadToS3ComingSoon;
+  /// **'Upload to S3'**
+  String get s3Upload;
+
+  /// No description provided for @s3UploadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup uploaded to S3'**
+  String get s3UploadSuccess;
+
+  /// No description provided for @s3UploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'S3 upload failed: {error}'**
+  String s3UploadFailed(String error);
+
+  /// No description provided for @s3ConfigIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill in endpoint, bucket, access key, and secret key'**
+  String get s3ConfigIncomplete;
 
   /// No description provided for @assetTrends.
   ///

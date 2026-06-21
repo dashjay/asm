@@ -87,14 +87,24 @@
   "exportLocalBackup": "Export Local Backup",
   "importCompleteRestart": "Import complete. Please restart the app.",
   "importBackup": "Import Backup",
-  "s3BackupReserved": "S3 Backup (Coming Soon)",
+  "s3BackupReserved": "S3 Backup",
+  "s3Backup": "S3 Backup",
   "s3Endpoint": "Endpoint",
   "s3Bucket": "Bucket",
   "s3AccessKey": "Access Key",
   "s3SecretKey": "Secret Key",
+  "s3Prefix": "Object Key Prefix",
   "saveS3Config": "Save S3 Config",
   "s3ConfigSaved": "S3 config saved",
-  "uploadToS3ComingSoon": "Upload to S3 (Coming Soon)",
+  "s3Upload": "Upload to S3",
+  "s3UploadSuccess": "Backup uploaded to S3",
+  "s3UploadFailed": "S3 upload failed: {error}",
+  "@s3UploadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "s3ConfigIncomplete": "Please fill in endpoint, bucket, access key, and secret key",
   "assetTrends": "Asset Trends",
   "familyTotalNetWorth": "Family Total Net Worth",
   "wizardStepFx": "Enter FX Rates",

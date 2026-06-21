@@ -173,7 +173,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importBackup => 'Import Backup';
 
   @override
-  String get s3BackupReserved => 'S3 Backup (Coming Soon)';
+  String get s3BackupReserved => 'S3 Backup';
+
+  @override
+  String get s3Backup => 'S3 Backup';
 
   @override
   String get s3Endpoint => 'Endpoint';
@@ -188,13 +191,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get s3SecretKey => 'Secret Key';
 
   @override
+  String get s3Prefix => 'Object Key Prefix';
+
+  @override
   String get saveS3Config => 'Save S3 Config';
 
   @override
   String get s3ConfigSaved => 'S3 config saved';
 
   @override
-  String get uploadToS3ComingSoon => 'Upload to S3 (Coming Soon)';
+  String get s3Upload => 'Upload to S3';
+
+  @override
+  String get s3UploadSuccess => 'Backup uploaded to S3';
+
+  @override
+  String s3UploadFailed(String error) {
+    return 'S3 upload failed: $error';
+  }
+
+  @override
+  String get s3ConfigIncomplete =>
+      'Please fill in endpoint, bucket, access key, and secret key';
 
   @override
   String get assetTrends => 'Asset Trends';

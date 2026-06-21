@@ -21,3 +21,10 @@ Future<void> replaceDatabaseFile(String pickedPath, String dest) async {
   }
   await File(pickedPath).copy(dest);
 }
+
+Future<void> deleteFileIfExists(String path) async {
+  final file = File(path);
+  if (await file.exists()) {
+    await file.delete();
+  }
+}

@@ -6,6 +6,7 @@ import '../../domain/currency/fx_defaults.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/net_worth_calculator.dart';
 import '../db/app_database.dart';
+import '../backup/s3_client.dart';
 
 /// CRUD for family members. Deleting a member cascades to their accounts and
 /// the related balance snapshots so no orphaned money lingers in totals.
@@ -205,8 +206,7 @@ class FxRepository {
   /// Persists an FX snapshot together with its USD->CNY and USD->SGD rates.
   ///
   /// This is the single source of truth for "what an FX snapshot looks like",
-  /// replacing three near-identical copies that previously lived in the
-  /// repositories and the database seed.
+  /// replacing three near-identical copies that previously lived in repositories.
   Future<int> insertSnapshot({
     double? usdToCny,
     double? usdToSgd,
@@ -503,12 +503,14 @@ class SettingsRepository {
     required String endpoint,
     required String bucket,
     required String accessKey,
+    required String prefix,
   }) {
     return (_db.update(_db.appSettings)..where((t) => t.id.equals(1))).write(
       AppSettingsCompanion(
         s3Endpoint: Value(endpoint),
         s3Bucket: Value(bucket),
         s3AccessKey: Value(accessKey),
+        s3Prefix: Value(prefix),
       ),
     );
   }
@@ -520,16 +522,29 @@ class SettingsRepository {
   }
 }
 
-/// Placeholder for the not-yet-implemented S3 backup feature.
+/// S3 backup upload via path-style PUT (import from S3 not yet implemented).
 class BackupRepository {
-  BackupRepository();
+  BackupRepository(this._s3Client);
 
-  Future<void> exportToS3(S3Config config) {
-    throw UnimplementedError('S3 backup coming soon');
+  final S3Client _s3Client;
+
+  Future<void> exportToS3({
+    required S3Config config,
+    required String localFilePath,
+    required String objectKey,
+  }) {
+    return _s3Client.putObject(
+      endpoint: config.endpoint,
+      bucket: config.bucket,
+      accessKey: config.accessKey,
+      secretKey: config.secretKey,
+      objectKey: objectKey,
+      localFilePath: localFilePath,
+    );
   }
 
   Future<void> importFromS3(S3Config config) {
-    throw UnimplementedError('S3 backup coming soon');
+    throw UnimplementedError('S3 import coming soon');
   }
 }
 
@@ -539,10 +554,12 @@ class S3Config {
     required this.bucket,
     required this.accessKey,
     required this.secretKey,
+    required this.prefix,
   });
 
   final String endpoint;
   final String bucket;
   final String accessKey;
   final String secretKey;
+  final String prefix;
 }

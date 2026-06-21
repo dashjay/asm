@@ -8,6 +8,7 @@ import '../../features/charts/charts_page.dart';
 import '../../features/fx/fx_history_page.dart';
 import '../../features/home/home_page.dart';
 import '../../features/members/members_page.dart';
+import '../../features/settings/backup_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/snapshot/snapshot_wizard_page.dart';
 import 'shell_page.dart';
@@ -68,6 +69,13 @@ GoRouter createRouter() {
             path: '/settings',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: SettingsPage()),
+            routes: [
+              GoRoute(
+                path: 'backup',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const BackupPage(),
+              ),
+            ],
           ),
         ],
       ),
