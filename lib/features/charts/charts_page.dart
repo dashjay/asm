@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
 import '../../domain/models/enums.dart';
+import '../../l10n/app_localizations.dart';
 import 'family_trend_chart.dart';
 
 class ChartsPage extends ConsumerWidget {
@@ -10,10 +11,11 @@ class ChartsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final settingsAsync = ref.watch(settingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('资产走势')),
+      appBar: AppBar(title: Text(l10n.assetTrends)),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -27,7 +29,10 @@ class ChartsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('家庭总净值', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      l10n.familyTotalNetWorth,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
                     Expanded(
                       child: FamilyTrendChart(

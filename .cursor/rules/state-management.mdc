@@ -1,0 +1,40 @@
+---
+description: Riverpod provider conventions for asm
+globs: lib/core/providers/**/*.dart,lib/features/**/*.dart
+alwaysApply: false
+---
+
+# State Management (Riverpod)
+
+## Prefer reactive providers for DB-derived state
+
+Database-derived state must be a `StreamProvider` driven by Drift `watch()` /
+`dashboardChanges()`, NOT a `FutureProvider` that callers remember to invalidate.
+A `FutureProvider` here caused stale net-worth totals after add/delete.
+
+```dart
+// GOOD: recomputes automatically on any relevant write
+final homeSummaryProvider = StreamProvider<HomeSummary>((ref) {
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  if (settings == null) return const Stream<HomeSummary>.empty();
+  final db = ref.watch(databaseProvider);
+  return _watchDashboard(db, () => _computeHomeSummary(...));
+});
+```
+
+After a mutation, do NOT sprinkle `ref.invalidate(...)`; the stream providers
+update themselves once the write commits.
+
+## Display currency
+
+Read the display currency from `displayCurrencyProvider` — never re-inline
+`ref.watch(settingsProvider).when(...)` in each widget.
+
+```dart
+final display = ref.watch(displayCurrencyProvider); // falls back to CNY while loading
+```
+
+## Compute once
+
+Compute expensive aggregates (e.g. `familyTrend`, forecasts) once and pass the
+result down to child widgets instead of recomputing per widget.

@@ -1,0 +1,23 @@
+---
+description: asm app layered architecture and dependency direction
+alwaysApply: true
+---
+
+# Architecture
+
+`asm` is a family asset-management app: Drift (SQLite) + Riverpod + go_router + fl_chart.
+
+## Layers (dependencies point downward only)
+
+- `lib/features/**` — UI (pages/widgets). May depend on core + domain + l10n.
+- `lib/core/**` — providers, router, theme, notifications, backup, constants.
+- `lib/data/**` — Drift database (`db/`) and repositories (`repositories/`).
+- `lib/domain/**` — pure Dart: calculators, currency, forecast, enums. NO Flutter/Drift imports.
+- `lib/l10n/**` — generated localizations.
+
+## Rules
+
+- UI never touches the `AppDatabase` directly; go through a repository (exposed via a Riverpod provider in `lib/core/providers/providers.dart`).
+- Domain code stays pure and unit-testable: no `package:flutter`, no `package:drift`.
+- New cross-cutting non-localized strings go in `lib/core/app_constants.dart`; numeric defaults like FX fallbacks in `lib/domain/currency/fx_defaults.dart`.
+- Run `flutter analyze` (must be clean) and `flutter test` before considering a change done. Regenerate Drift code with `dart run build_runner build` after editing `lib/data/db/tables.dart`.

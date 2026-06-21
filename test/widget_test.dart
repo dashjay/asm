@@ -10,6 +10,6 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: AsmApp()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('家庭资产'), findsOneWidget);
+    expect(find.text('Family Assets'), findsOneWidget);
   });
 }

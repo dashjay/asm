@@ -35,6 +35,18 @@ GoRouter createRouter() {
                 const NoTransitionPage(child: AccountsPage()),
             routes: [
               GoRoute(
+                path: 'new',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const AccountFormPage(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => AccountFormPage(
+                  accountId: int.parse(state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
                 path: ':id',
                 builder: (context, state) => AccountDetailPage(
                   accountId: int.parse(state.pathParameters['id']!),
@@ -68,18 +80,6 @@ GoRouter createRouter() {
         path: '/members',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const MembersPage(),
-      ),
-      GoRoute(
-        path: '/accounts/new',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AccountFormPage(),
-      ),
-      GoRoute(
-        path: '/accounts/:id/edit',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => AccountFormPage(
-          accountId: int.parse(state.pathParameters['id']!),
-        ),
       ),
     ],
   );

@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+import '../../core/app_constants.dart';
+import '../../domain/currency/fx_defaults.dart';
 import '../../domain/models/enums.dart';
 import 'tables.dart';
 
@@ -20,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -31,14 +33,77 @@ class AppDatabase extends _$AppDatabase {
             mode: InsertMode.insertOrIgnore,
           );
         },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(
+              appSettings,
+              appSettings.localeLanguageCode,
+            );
+          }
+        },
       );
+
+  /// Streams change events for every table that feeds a net-worth computation.
+  /// Reactive providers listen to this to recompute dashboards/charts on write.
+  Stream<Set<TableUpdate>> dashboardChanges() {
+    return tableUpdates(
+      TableUpdateQuery.onAllTables([
+        updateSessions,
+        balanceSnapshots,
+        accounts,
+        fxSnapshots,
+        fxRates,
+      ]),
+    );
+  }
+
+  /// Inserts an FX snapshot plus its USD->CNY and USD->SGD rate rows.
+  ///
+  /// Shared by the repositories and the seed routine so the snapshot shape is
+  /// defined in exactly one place. Falls back to [kDefaultUsdToCny] /
+  /// [kDefaultUsdToSgd] when explicit rates are not provided.
+  Future<int> insertFxSnapshot({
+    double? usdToCny,
+    double? usdToSgd,
+    DateTime? recordedAt,
+    String? sourceNote,
+  }) async {
+    final fxId = await into(fxSnapshots).insert(
+      FxSnapshotsCompanion.insert(
+        recordedAt:
+            recordedAt != null ? Value(recordedAt) : const Value.absent(),
+        sourceNote:
+            sourceNote != null ? Value(sourceNote) : const Value.absent(),
+      ),
+    );
+    await batch((batch) {
+      batch.insertAll(fxRates, [
+        FxRatesCompanion.insert(
+          fxSnapshotId: fxId,
+          fromCurrency: Currency.usd.name,
+          toCurrency: Currency.cny.name,
+          rate: usdToCny ?? kDefaultUsdToCny,
+        ),
+        FxRatesCompanion.insert(
+          fxSnapshotId: fxId,
+          fromCurrency: Currency.usd.name,
+          toCurrency: Currency.sgd.name,
+          rate: usdToSgd ?? kDefaultUsdToSgd,
+        ),
+      ]);
+    });
+    return fxId;
+  }
 
   Future<void> seedIfEmpty() async {
     final memberCount = await familyMembers.count().getSingle();
     if (memberCount > 0) return;
 
     final memberId = await into(familyMembers).insert(
-      FamilyMembersCompanion.insert(name: '家庭', avatarColor: const Value(0xFF6750A4)),
+      FamilyMembersCompanion.insert(
+        name: kSeedFamilyName,
+        avatarColor: const Value(0xFF6750A4),
+      ),
     );
 
     final cnyAccount = await into(accounts).insert(
@@ -94,28 +159,12 @@ class AppDatabase extends _$AppDatabase {
     required double usdToSgd,
     required Map<int, double> balances,
   }) async {
-    final fxId = await into(fxSnapshots).insert(
-      FxSnapshotsCompanion.insert(
-        recordedAt: Value(recordedAt),
-        sourceNote: const Value('示例数据'),
-      ),
+    final fxId = await insertFxSnapshot(
+      usdToCny: usdToCny,
+      usdToSgd: usdToSgd,
+      recordedAt: recordedAt,
+      sourceNote: kSeedSourceNote,
     );
-    await batch((batch) {
-      batch.insertAll(fxRates, [
-        FxRatesCompanion.insert(
-          fxSnapshotId: fxId,
-          fromCurrency: Currency.usd.name,
-          toCurrency: Currency.cny.name,
-          rate: usdToCny,
-        ),
-        FxRatesCompanion.insert(
-          fxSnapshotId: fxId,
-          fromCurrency: Currency.usd.name,
-          toCurrency: Currency.sgd.name,
-          rate: usdToSgd,
-        ),
-      ]);
-    });
 
     final sessionId = await into(updateSessions).insert(
       UpdateSessionsCompanion.insert(

@@ -37,6 +37,16 @@ final settingsProvider = StreamProvider<AppSetting>(
   (ref) => ref.watch(settingsRepositoryProvider).watch(),
 );
 
+/// The currency the UI should render totals in. Centralizes the "read it from
+/// settings, fall back to CNY while loading" logic that was duplicated across
+/// many widgets.
+final displayCurrencyProvider = Provider<Currency>((ref) {
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  return settings != null
+      ? Currency.fromString(settings.displayCurrency)
+      : Currency.cny;
+});
+
 final membersProvider = StreamProvider(
   (ref) => ref.watch(memberRepositoryProvider).watchAll(),
 );
@@ -54,33 +64,51 @@ final accountSnapshotsProvider =
   return ref.watch(accountRepositoryProvider).watchSnapshots(accountId);
 });
 
-final latestFxProvider = FutureProvider<FxSnapshot?>((ref) async {
-  return ref.watch(fxRepositoryProvider).latest();
+/// Recomputes [compute] once now and again on every dashboard-relevant write,
+/// turning a one-shot query into a stream that keeps derived UI in sync.
+Stream<T> _watchDashboard<T>(
+  AppDatabase db,
+  Future<T> Function() compute,
+) async* {
+  yield await compute();
+  await for (final _ in db.dashboardChanges()) {
+    yield await compute();
+  }
+}
+
+final latestFxProvider = StreamProvider<FxSnapshot?>((ref) {
+  final db = ref.watch(databaseProvider);
+  final repo = ref.watch(fxRepositoryProvider);
+  return _watchDashboard(db, repo.latest);
 });
 
-final latestConverterProvider = FutureProvider<CurrencyConverter>((ref) async {
-  return ref.watch(fxRepositoryProvider).latestConverter();
+final latestConverterProvider = StreamProvider<CurrencyConverter>((ref) {
+  final db = ref.watch(databaseProvider);
+  final repo = ref.watch(fxRepositoryProvider);
+  return _watchDashboard(db, repo.latestConverter);
 });
 
-final latestSessionProvider = FutureProvider<UpdateSession?>((ref) async {
-  return ref.watch(sessionRepositoryProvider).latest();
+final latestSessionProvider = StreamProvider<UpdateSession?>((ref) {
+  final db = ref.watch(databaseProvider);
+  final repo = ref.watch(sessionRepositoryProvider);
+  return _watchDashboard(db, repo.latest);
 });
 
-final familyTrendProvider =
-    FutureProvider.family<List<({UpdateSession session, double netWorth})>, ChartRange>(
-  (ref, range) async {
-    final settings = await ref.watch(settingsRepositoryProvider).get();
-    final display = Currency.fromString(settings.displayCurrency);
+final familyTrendProvider = StreamProvider.family<
+    List<({UpdateSession session, double netWorth})>, ChartRange>(
+  (ref, range) {
+    final display = ref.watch(displayCurrencyProvider);
     final since = range.duration != null
         ? DateTime.now().subtract(range.duration!)
         : null;
-    return ref.watch(sessionRepositoryProvider).familyTrend(
+    return ref.watch(sessionRepositoryProvider).watchFamilyTrend(
           displayCurrency: display,
           since: since,
         );
   },
 );
 
+/// Aggregated state for the home dashboard.
 class HomeSummary {
   HomeSummary({
     required this.netWorthByCurrency,
@@ -101,13 +129,37 @@ class HomeSummary {
   final LinearForecastResult? forecast;
 }
 
-final homeSummaryProvider = FutureProvider<HomeSummary>((ref) async {
+/// Reactive home summary: recomputes whenever settings or any dashboard table
+/// change, so the displayed net worth can never go stale (the bug this refactor
+/// targets). Net worth is precomputed for every currency so toggling the
+/// display currency is instant and does not hit the database again.
+final homeSummaryProvider = StreamProvider<HomeSummary>((ref) {
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  if (settings == null) return const Stream<HomeSummary>.empty();
+
+  final db = ref.watch(databaseProvider);
+  final display = Currency.fromString(settings.displayCurrency);
   final sessionRepo = ref.watch(sessionRepositoryProvider);
   final fxRepo = ref.watch(fxRepositoryProvider);
   final accountRepo = ref.watch(accountRepositoryProvider);
-  final settings = await ref.watch(settingsRepositoryProvider).get();
-  final display = Currency.fromString(settings.displayCurrency);
 
+  return _watchDashboard(
+    db,
+    () => _computeHomeSummary(
+      sessionRepo: sessionRepo,
+      fxRepo: fxRepo,
+      accountRepo: accountRepo,
+      display: display,
+    ),
+  );
+});
+
+Future<HomeSummary> _computeHomeSummary({
+  required SessionRepository sessionRepo,
+  required FxRepository fxRepo,
+  required AccountRepository accountRepo,
+  required Currency display,
+}) async {
   final latest = await sessionRepo.latest();
   if (latest == null) {
     return HomeSummary(
@@ -151,20 +203,25 @@ final homeSummaryProvider = FutureProvider<HomeSummary>((ref) async {
     }
   }
 
-  final fxSnapshot = await (_dbFxSnapshot(ref, latest.fxSnapshotId));
-  final daysSinceUpdate = DateTime.now().difference(latest.recordedAt).inDays;
-  final daysSinceFxUpdate =
-      fxSnapshot != null ? DateTime.now().difference(fxSnapshot.recordedAt).inDays : null;
+  final fxSnapshot = await fxRepo.snapshotById(latest.fxSnapshotId);
+  final now = DateTime.now();
+  final daysSinceUpdate = now.difference(latest.recordedAt).inDays;
+  final daysSinceFxUpdate = fxSnapshot != null
+      ? now.difference(fxSnapshot.recordedAt).inDays
+      : null;
 
+  // One query for the latest snapshot of every account, instead of one query
+  // per account.
   final accounts = await accountRepo.watchActive().first;
+  final latestByAccount = await accountRepo.latestSnapshotByAccount();
   final overdueAccounts = <Account>[];
   for (final account in accounts) {
-    final snap = await accountRepo.latestSnapshot(account.id);
+    final snap = latestByAccount[account.id];
     if (snap == null) {
       overdueAccounts.add(account);
       continue;
     }
-    final days = DateTime.now().difference(snap.recordedAt).inDays;
+    final days = now.difference(snap.recordedAt).inDays;
     if (account.reminderEnabled && days >= account.reminderIntervalDays) {
       overdueAccounts.add(account);
     }
@@ -187,12 +244,6 @@ final homeSummaryProvider = FutureProvider<HomeSummary>((ref) async {
     overdueAccounts: overdueAccounts,
     forecast: forecast,
   );
-});
-
-Future<FxSnapshot?> _dbFxSnapshot(Ref ref, int id) async {
-  final db = ref.watch(databaseProvider);
-  return (db.select(db.fxSnapshots)..where((t) => t.id.equals(id)))
-      .getSingleOrNull();
 }
 
 final fxHistoryProvider = StreamProvider((ref) {

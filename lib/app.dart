@@ -6,6 +6,7 @@ import 'core/notifications/notification_scheduler.dart';
 import 'core/providers/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'l10n/app_localizations.dart';
 
 class AsmApp extends ConsumerStatefulWidget {
   const AsmApp({super.key});
@@ -26,17 +27,29 @@ class _AsmAppState extends ConsumerState<AsmApp> {
   Future<void> _bootstrap() async {
     final db = ref.read(databaseProvider);
     await db.seedIfEmpty();
-    final scheduler = NotificationScheduler(ref.read(accountRepositoryProvider));
+    final scheduler = NotificationScheduler(
+      ref.read(accountRepositoryProvider),
+      ref.read(settingsRepositoryProvider),
+    );
     await scheduler.rescheduleAll();
   }
 
   @override
   Widget build(BuildContext context) {
+    final settingsAsync = ref.watch(settingsProvider);
+    final localeCode = settingsAsync.maybeWhen(
+      data: (s) => s.localeLanguageCode,
+      orElse: () => 'en',
+    );
+
     return MaterialApp.router(
-      title: '家庭资产',
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: AppTheme.light(),
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
+      locale: Locale(localeCode),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 }

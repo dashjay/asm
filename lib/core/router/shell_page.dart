@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/app_localizations.dart';
+
 class ShellPage extends StatelessWidget {
   const ShellPage({super.key, required this.child});
 
@@ -17,12 +19,14 @@ class ShellPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       body: child,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/snapshot'),
         icon: const Icon(Icons.edit_note),
-        label: const Text('更新余额'),
+        label: Text(l10n.updateBalances),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index(context),
@@ -40,12 +44,32 @@ class ShellPage extends StatelessWidget {
               context.go('/settings');
           }
         },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: '首页'),
-          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: '账户'),
-          NavigationDestination(icon: Icon(Icons.show_chart_outlined), selectedIcon: Icon(Icons.show_chart), label: '走势'),
-          NavigationDestination(icon: Icon(Icons.currency_exchange_outlined), selectedIcon: Icon(Icons.currency_exchange), label: '汇率'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: '设置'),
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: l10n.navHome,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: const Icon(Icons.account_balance_wallet),
+            label: l10n.navAccounts,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.show_chart_outlined),
+            selectedIcon: const Icon(Icons.show_chart),
+            label: l10n.navCharts,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.currency_exchange_outlined),
+            selectedIcon: const Icon(Icons.currency_exchange),
+            label: l10n.navFx,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings),
+            label: l10n.navSettings,
+          ),
         ],
       ),
     );

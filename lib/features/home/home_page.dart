@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers/providers.dart';
 import '../../core/utils/formatters.dart';
+import '../../domain/forecast/linear_forecast.dart';
 import '../../domain/models/enums.dart';
+import '../../l10n/app_localizations.dart';
 import '../charts/family_trend_chart.dart';
 
 class HomePage extends ConsumerWidget {
@@ -12,11 +14,14 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final summaryAsync = ref.watch(homeSummaryProvider);
+    final display = ref.watch(displayCurrencyProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('家庭资产'),
+        title: Text(l10n.appTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.group_outlined),
@@ -26,10 +31,8 @@ class HomePage extends ConsumerWidget {
       ),
       body: summaryAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败: $e')),
+        error: (e, _) => Center(child: Text(l10n.loadFailed('$e'))),
         data: (summary) {
-          final display = summary.displayCurrency;
-
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(homeSummaryProvider);
@@ -54,18 +57,24 @@ class HomePage extends ConsumerWidget {
                       color: Theme.of(context).colorScheme.errorContainer,
                       child: ListTile(
                         leading: const Icon(Icons.warning_amber),
-                        title: const Text('汇率可能已过期'),
-                        subtitle: Text('上次录入 ${summary.daysSinceFxUpdate} 天前，建议更新'),
+                        title: Text(l10n.fxMayBeStale),
+                        subtitle: Text(
+                          l10n.fxLastRecordedDaysAgo(summary.daysSinceFxUpdate!),
+                        ),
                         trailing: TextButton(
                           onPressed: () => context.push('/snapshot'),
-                          child: const Text('去更新'),
+                          child: Text(l10n.goUpdate),
                         ),
                       ),
                     ),
                   ),
                 if (summary.forecast != null) ...[
                   const SizedBox(height: 12),
-                  _ForecastCard(summary: summary, display: display),
+                  _ForecastCard(
+                    forecast: summary.forecast!,
+                    display: display,
+                    locale: locale,
+                  ),
                 ],
                 const SizedBox(height: 12),
                 Card(
@@ -74,7 +83,10 @@ class HomePage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('家庭走势', style: Theme.of(context).textTheme.titleMedium),
+                        Text(
+                          l10n.familyTrend,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                         const SizedBox(height: 12),
                         SizedBox(
                           height: 180,
@@ -90,13 +102,18 @@ class HomePage extends ConsumerWidget {
                 ),
                 if (summary.overdueAccounts.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Text('待更新账户', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    l10n.accountsToUpdate,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 8),
                   ...summary.overdueAccounts.map(
                     (account) => Card(
                       child: ListTile(
                         title: Text(account.name),
-                        subtitle: Text('已超过 ${account.reminderIntervalDays} 天周期'),
+                        subtitle: Text(
+                          l10n.overdueDays(account.reminderIntervalDays),
+                        ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/snapshot'),
                       ),
@@ -124,11 +141,9 @@ class _NetWorthCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final display = ref.watch(settingsProvider).when(
-          data: (settings) => Currency.fromString(settings.displayCurrency),
-          loading: () => summary.displayCurrency,
-          error: (_, __) => summary.displayCurrency,
-        );
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    final display = ref.watch(displayCurrencyProvider);
     final netWorth = summary.netWorthByCurrency[display] ?? 0;
     final changeFromPrevious = summary.changeFromPreviousByCurrency[display];
 
@@ -138,10 +153,10 @@ class _NetWorthCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('家庭净值', style: Theme.of(context).textTheme.labelLarge),
+            Text(l10n.familyNetWorth, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             Text(
-              formatMoney(netWorth, display),
+              formatMoney(netWorth, display, locale),
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -149,7 +164,9 @@ class _NetWorthCard extends ConsumerWidget {
             if (changeFromPrevious != null) ...[
               const SizedBox(height: 4),
               Text(
-                '较上次 ${formatSignedMoney(changeFromPrevious, display)}',
+                l10n.changeSinceLast(
+                  formatSignedMoney(changeFromPrevious, display, locale),
+                ),
                 style: TextStyle(
                   color: changeFromPrevious >= 0
                       ? Colors.green.shade700
@@ -160,7 +177,7 @@ class _NetWorthCard extends ConsumerWidget {
             if (summary.daysSinceUpdate != null) ...[
               const SizedBox(height: 8),
               Chip(
-                label: Text('距上次更新 ${summary.daysSinceUpdate} 天'),
+                label: Text(l10n.daysSinceUpdate(summary.daysSinceUpdate!)),
                 visualDensity: VisualDensity.compact,
               ),
             ],
@@ -180,7 +197,7 @@ class _NetWorthCard extends ConsumerWidget {
                   .where((c) => c != display)
                   .map(
                     (c) => Text(
-                      '${c.code}: ${formatMoney(summary.netWorthByCurrency[c] ?? 0, c)}',
+                      '${c.code}: ${formatMoney(summary.netWorthByCurrency[c] ?? 0, c, locale)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   )
@@ -194,14 +211,21 @@ class _NetWorthCard extends ConsumerWidget {
 }
 
 class _ForecastCard extends StatelessWidget {
-  const _ForecastCard({required this.summary, required this.display});
+  const _ForecastCard({
+    required this.forecast,
+    required this.display,
+    required this.locale,
+  });
 
-  final HomeSummary summary;
+  final LinearForecastResult forecast;
   final Currency display;
+  final String locale;
 
   @override
   Widget build(BuildContext context) {
-    final forecast = summary.forecast!;
+    final l10n = AppLocalizations.of(context)!;
+    if (forecast.projections.isEmpty) return const SizedBox.shrink();
+
     final in90 = forecast.projections.lastWhere(
       (p) => p.date.difference(DateTime.now()).inDays >= 80,
       orElse: () => forecast.projections.last,
@@ -212,15 +236,19 @@ class _ForecastCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('趋势预测', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n.trendForecast,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             Text(
-              '按近 ${forecast.projections.isNotEmpty ? '6' : '0'} 个月趋势，'
-              '预计约 3 个月后家庭净值约 ${formatMoney(in90.value, display)}',
+              l10n.forecastDescription(
+                formatMoney(in90.value, display, locale),
+              ),
             ),
             const SizedBox(height: 4),
             Text(
-              '仅供参考，不构成投资建议',
+              l10n.forecastDisclaimer,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.outline,
                   ),

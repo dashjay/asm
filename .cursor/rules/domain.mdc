@@ -1,0 +1,27 @@
+---
+description: Pure domain logic conventions
+globs: lib/domain/**/*.dart
+alwaysApply: false
+---
+
+# Domain Layer
+
+Pure, framework-free Dart. Keep it trivially unit-testable.
+
+- No `package:flutter`, `package:drift`, or Riverpod imports here.
+- Calculators are stateless static methods or immutable value objects
+  (`NetWorthCalculator`, `LinearForecast`, `CurrencyConverter`).
+- Currency math goes through `CurrencyConverter`; never multiply raw rates ad hoc.
+
+```dart
+// GOOD
+final cny = converter.convert(amount: usd, from: Currency.usd, to: Currency.cny);
+
+// BAD: bypasses the rate matrix
+final cny = usd * 7.25;
+```
+
+- FX fallback numbers live in `fx_defaults.dart` (`kDefaultUsdToCny`,
+  `kDefaultUsdToSgd`). Do not re-hardcode `7.25` / `1.35` anywhere.
+- Enums in `models/enums.dart` own their own `label(l10n)` / `fromString`
+  helpers; extend those rather than scattering `switch` statements.

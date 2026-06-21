@@ -1,10 +1,14 @@
 import 'package:drift/drift.dart';
 
+import '../../core/app_constants.dart';
 import '../../domain/currency/currency_converter.dart';
+import '../../domain/currency/fx_defaults.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/net_worth_calculator.dart';
 import '../db/app_database.dart';
 
+/// CRUD for family members. Deleting a member cascades to their accounts and
+/// the related balance snapshots so no orphaned money lingers in totals.
 class MemberRepository {
   MemberRepository(this._db);
 
@@ -46,6 +50,7 @@ class MemberRepository {
   }
 }
 
+/// CRUD for accounts plus access to their balance-snapshot history.
 class AccountRepository {
   AccountRepository(this._db);
 
@@ -87,12 +92,14 @@ class AccountRepository {
     return id;
   }
 
+  /// Records the opening balance as its own session so the account immediately
+  /// shows up in net-worth totals and history.
   Future<void> _createInitialSnapshot(int accountId, double amount) async {
-    final fx = await _getOrCreateFxSnapshot(DateTime.now(), 7.25, 1.35);
+    final fx = await FxRepository(_db).latestOrSeeded();
     final sessionId = await _db.into(_db.updateSessions).insert(
           UpdateSessionsCompanion.insert(
             fxSnapshotId: fx.id,
-            note: const Value('初始余额'),
+            note: const Value(kInitialBalanceNote),
           ),
         );
     await _db.into(_db.balanceSnapshots).insert(
@@ -102,41 +109,6 @@ class AccountRepository {
             amount: amount,
           ),
         );
-  }
-
-  Future<FxSnapshot> _getOrCreateFxSnapshot(
-    DateTime recordedAt,
-    double usdToCny,
-    double usdToSgd,
-  ) async {
-    final existing = await (_db.select(_db.fxSnapshots)
-          ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)])
-          ..limit(1))
-        .getSingleOrNull();
-    if (existing != null) return existing;
-
-    final fxId = await _db.into(_db.fxSnapshots).insert(
-          FxSnapshotsCompanion.insert(recordedAt: Value(recordedAt)),
-        );
-    await _db.batch((batch) {
-      batch.insertAll(_db.fxRates, [
-        FxRatesCompanion.insert(
-          fxSnapshotId: fxId,
-          fromCurrency: Currency.usd.name,
-          toCurrency: Currency.cny.name,
-          rate: usdToCny,
-        ),
-        FxRatesCompanion.insert(
-          fxSnapshotId: fxId,
-          fromCurrency: Currency.usd.name,
-          toCurrency: Currency.sgd.name,
-          rate: usdToSgd,
-        ),
-      ]);
-    });
-    return (await (_db.select(_db.fxSnapshots)
-          ..where((t) => t.id.equals(fxId)))
-        .getSingle());
   }
 
   Future<void> update({
@@ -164,12 +136,34 @@ class AccountRepository {
     );
   }
 
+  Future<void> delete(int id) async {
+    await (_db.delete(_db.balanceSnapshots)
+          ..where((t) => t.accountId.equals(id)))
+        .go();
+    await (_db.delete(_db.accounts)..where((t) => t.id.equals(id))).go();
+  }
+
   Future<BalanceSnapshot?> latestSnapshot(int accountId) {
     return (_db.select(_db.balanceSnapshots)
           ..where((t) => t.accountId.equals(accountId))
           ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)])
           ..limit(1))
         .getSingleOrNull();
+  }
+
+  /// Returns the most recent snapshot for every account in a single query.
+  ///
+  /// Replaces the previous per-account fan-out (one query per account) used by
+  /// the home dashboard, which scaled poorly as accounts grew.
+  Future<Map<int, BalanceSnapshot>> latestSnapshotByAccount() async {
+    final snapshots = await (_db.select(_db.balanceSnapshots)
+          ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)]))
+        .get();
+    final result = <int, BalanceSnapshot>{};
+    for (final snapshot in snapshots) {
+      result.putIfAbsent(snapshot.accountId, () => snapshot);
+    }
+    return result;
   }
 
   Stream<List<BalanceSnapshot>> watchSnapshots(int accountId) {
@@ -180,6 +174,7 @@ class AccountRepository {
   }
 }
 
+/// Reads and writes FX snapshots and exposes ready-to-use [CurrencyConverter]s.
 class FxRepository {
   FxRepository(this._db);
 
@@ -193,6 +188,38 @@ class FxRepository {
         ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)])
         ..limit(1))
       .getSingleOrNull();
+
+  Future<FxSnapshot?> snapshotById(int id) =>
+      (_db.select(_db.fxSnapshots)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  /// Returns the latest snapshot, creating a default one (using the fallback
+  /// rates) if none exists yet so callers always have a valid FX reference.
+  Future<FxSnapshot> latestOrSeeded() async {
+    final existing = await latest();
+    if (existing != null) return existing;
+    final id = await _db.insertFxSnapshot();
+    return (await snapshotById(id))!;
+  }
+
+  /// Persists an FX snapshot together with its USD->CNY and USD->SGD rates.
+  ///
+  /// This is the single source of truth for "what an FX snapshot looks like",
+  /// replacing three near-identical copies that previously lived in the
+  /// repositories and the database seed.
+  Future<int> insertSnapshot({
+    double? usdToCny,
+    double? usdToSgd,
+    DateTime? recordedAt,
+    String? sourceNote,
+  }) {
+    return _db.insertFxSnapshot(
+      usdToCny: usdToCny,
+      usdToSgd: usdToSgd,
+      recordedAt: recordedAt,
+      sourceNote: sourceNote,
+    );
+  }
 
   Future<List<FxRate>> ratesForSnapshot(int fxSnapshotId) =>
       (_db.select(_db.fxRates)
@@ -211,12 +238,17 @@ class FxRepository {
   Future<CurrencyConverter> latestConverter() async {
     final snapshot = await latest();
     if (snapshot == null) {
-      return CurrencyConverter.fromUsdRates(usdToCny: 7.25, usdToSgd: 1.35);
+      return CurrencyConverter.fromUsdRates(
+        usdToCny: kDefaultUsdToCny,
+        usdToSgd: kDefaultUsdToSgd,
+      );
     }
     return converterForSnapshot(snapshot.id);
   }
 }
 
+/// Update sessions group the balance changes recorded at one point in time and
+/// own the heavier aggregate queries used by the dashboard and charts.
 class SessionRepository {
   SessionRepository(this._db);
 
@@ -243,74 +275,43 @@ class SessionRepository {
             ..where((t) => t.updateSessionId.equals(sessionId)))
           .get();
 
-  Future<Map<int, BalanceSnapshot>> latestSnapshotsBeforeSession(
-    UpdateSession session,
-  ) async {
-    final accounts = await _db.select(_db.accounts).get();
-    final result = <int, BalanceSnapshot>{};
-    for (final account in accounts) {
-      final snap = await (_db.select(_db.balanceSnapshots)
-            ..where((t) =>
-                t.accountId.equals(account.id) &
-                t.recordedAt.isSmallerThanValue(session.recordedAt))
-            ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)])
-            ..limit(1))
-          .getSingleOrNull();
-      if (snap != null) result[account.id] = snap;
-    }
-    return result;
-  }
-
+  /// Creates a new snapshot session: persists the FX rates, then one balance
+  /// snapshot per account with its delta vs. the previous value.
   Future<int> createSession({
     required double usdToCny,
     required double usdToSgd,
     required String sourceNote,
     required Map<int, double> accountAmounts,
     required Map<int, ({ChangeReason? reason, String? note})> changeMeta,
-    required double thresholdPercent,
-    required double thresholdAmount,
-    required Currency displayCurrency,
-    required CurrencyConverter previousFx,
   }) async {
     return _db.transaction(() async {
-      final fxId = await _db.into(_db.fxSnapshots).insert(
-            FxSnapshotsCompanion.insert(sourceNote: Value(sourceNote)),
-          );
-      await _db.batch((batch) {
-        batch.insertAll(_db.fxRates, [
-          FxRatesCompanion.insert(
-            fxSnapshotId: fxId,
-            fromCurrency: Currency.usd.name,
-            toCurrency: Currency.cny.name,
-            rate: usdToCny,
-          ),
-          FxRatesCompanion.insert(
-            fxSnapshotId: fxId,
-            fromCurrency: Currency.usd.name,
-            toCurrency: Currency.sgd.name,
-            rate: usdToSgd,
-          ),
-        ]);
-      });
+      final fxId = await _db.insertFxSnapshot(
+        usdToCny: usdToCny,
+        usdToSgd: usdToSgd,
+        sourceNote: sourceNote,
+      );
 
       final sessionId = await _db.into(_db.updateSessions).insert(
             UpdateSessionsCompanion.insert(fxSnapshotId: fxId),
           );
 
-      final converter = CurrencyConverter.fromUsdRates(
-        usdToCny: usdToCny,
-        usdToSgd: usdToSgd,
-      );
+      // Bulk-load the previous snapshot for every affected account up front
+      // instead of querying once per account inside the loop.
+      final accountIds = accountAmounts.keys.toList();
+      final previousByAccount = <int, BalanceSnapshot>{};
+      if (accountIds.isNotEmpty) {
+        final priorSnapshots = await (_db.select(_db.balanceSnapshots)
+              ..where((t) => t.accountId.isIn(accountIds))
+              ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)]))
+            .get();
+        for (final snapshot in priorSnapshots) {
+          previousByAccount.putIfAbsent(snapshot.accountId, () => snapshot);
+        }
+      }
 
+      final inserts = <BalanceSnapshotsCompanion>[];
       for (final entry in accountAmounts.entries) {
-        final account = await (_db.select(_db.accounts)
-              ..where((t) => t.id.equals(entry.key)))
-            .getSingle();
-        final previous = await (_db.select(_db.balanceSnapshots)
-              ..where((t) => t.accountId.equals(entry.key))
-              ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)])
-              ..limit(1))
-            .getSingleOrNull();
+        final previous = previousByAccount[entry.key];
 
         double? delta;
         double? deltaPercent;
@@ -321,34 +322,20 @@ class SessionRepository {
         }
 
         final meta = changeMeta[entry.key];
-        await _db.into(_db.balanceSnapshots).insert(
-              BalanceSnapshotsCompanion.insert(
-                accountId: entry.key,
-                updateSessionId: sessionId,
-                amount: entry.value,
-                changeReason: Value(meta?.reason?.name),
-                changeReasonText: Value(meta?.note ?? ''),
-                deltaFromPrevious: Value(delta),
-                deltaPercent: Value(deltaPercent),
-              ),
-            );
-
-        if (previous != null && delta != null) {
-          final convertedDelta = converter.convert(
-            amount: delta.abs(),
-            from: Currency.fromString(account.currency),
-            to: displayCurrency,
-          );
-          final isLarge = (deltaPercent != null &&
-                  deltaPercent.abs() >= thresholdPercent) ||
-              convertedDelta >= thresholdAmount;
-          // meta should already be filled by UI when large
-          if (isLarge && meta?.reason == null) {
-            // default to other if UI missed it
-          }
-        }
+        inserts.add(
+          BalanceSnapshotsCompanion.insert(
+            accountId: entry.key,
+            updateSessionId: sessionId,
+            amount: entry.value,
+            changeReason: Value(meta?.reason?.name),
+            changeReasonText: Value(meta?.note ?? ''),
+            deltaFromPrevious: Value(delta),
+            deltaPercent: Value(deltaPercent),
+          ),
+        );
       }
 
+      await _db.batch((batch) => batch.insertAll(_db.balanceSnapshots, inserts));
       return sessionId;
     });
   }
@@ -357,7 +344,9 @@ class SessionRepository {
     final snapshots = await snapshotsForSession(sessionId);
     final accounts = await _db.select(_db.accounts).get();
     final accountMap = {for (final a in accounts) a.id: a};
-    return snapshots.map((s) {
+    return snapshots
+        .where((s) => accountMap.containsKey(s.accountId))
+        .map((s) {
       final account = accountMap[s.accountId]!;
       return AccountBalance(
         accountId: s.accountId,
@@ -368,6 +357,11 @@ class SessionRepository {
     }).toList();
   }
 
+  /// Computes the family net worth at every recorded session.
+  ///
+  /// Performance: loads all sessions, snapshots, accounts and FX rates in four
+  /// queries and joins them in memory, rather than issuing several queries per
+  /// session (the previous O(sessions) query storm).
   Future<List<({UpdateSession session, double netWorth})>> familyTrend({
     required Currency displayCurrency,
     DateTime? since,
@@ -378,23 +372,76 @@ class SessionRepository {
     if (since != null) {
       sessions = sessions.where((s) => s.recordedAt.isAfter(since)).toList();
     }
+    if (sessions.isEmpty) return [];
 
-    final fxRepo = FxRepository(_db);
+    final accounts = await _db.select(_db.accounts).get();
+    final accountMap = {for (final a in accounts) a.id: a};
+
+    final allSnapshots = await _db.select(_db.balanceSnapshots).get();
+    final snapshotsBySession = <int, List<BalanceSnapshot>>{};
+    for (final snapshot in allSnapshots) {
+      snapshotsBySession
+          .putIfAbsent(snapshot.updateSessionId, () => [])
+          .add(snapshot);
+    }
+
+    final allRates = await _db.select(_db.fxRates).get();
+    final rateRowsBySnapshot =
+        <int, List<({String from, String to, double rate})>>{};
+    for (final rate in allRates) {
+      rateRowsBySnapshot.putIfAbsent(rate.fxSnapshotId, () => []).add(
+            (from: rate.fromCurrency, to: rate.toCurrency, rate: rate.rate),
+          );
+    }
+
+    final converterCache = <int, CurrencyConverter>{};
     final result = <({UpdateSession session, double netWorth})>[];
     for (final session in sessions) {
-      final balances = await balancesForSession(session.id);
-      final converter = await fxRepo.converterForSnapshot(session.fxSnapshotId);
-      final netWorth = NetWorthCalculator.familyNetWorth(
-        balances: balances,
-        converter: converter,
-        displayCurrency: displayCurrency,
+      final balances = (snapshotsBySession[session.id] ?? [])
+          .where((s) => accountMap.containsKey(s.accountId))
+          .map((s) {
+        final account = accountMap[s.accountId]!;
+        return AccountBalance(
+          accountId: s.accountId,
+          category: AccountCategory.fromString(account.category),
+          currency: Currency.fromString(account.currency),
+          amount: s.amount,
+        );
+      }).toList();
+
+      final converter = converterCache.putIfAbsent(
+        session.fxSnapshotId,
+        () => CurrencyConverter.fromRateRows(
+          rateRowsBySnapshot[session.fxSnapshotId] ?? const [],
+        ),
       );
-      result.add((session: session, netWorth: netWorth));
+
+      result.add((
+        session: session,
+        netWorth: NetWorthCalculator.familyNetWorth(
+          balances: balances,
+          converter: converter,
+          displayCurrency: displayCurrency,
+        ),
+      ));
     }
     return result;
   }
+
+  /// Reactive variant of [familyTrend] that re-emits whenever any dashboard
+  /// table changes, so charts and forecasts stay in sync automatically.
+  Stream<List<({UpdateSession session, double netWorth})>> watchFamilyTrend({
+    required Currency displayCurrency,
+    DateTime? since,
+  }) async* {
+    yield await familyTrend(displayCurrency: displayCurrency, since: since);
+    await for (final _ in _db.dashboardChanges()) {
+      yield await familyTrend(displayCurrency: displayCurrency, since: since);
+    }
+  }
 }
 
+/// Single-row application settings (display currency, thresholds, locale, S3).
 class SettingsRepository {
   SettingsRepository(this._db);
 
@@ -436,8 +483,15 @@ class SettingsRepository {
       ),
     );
   }
+
+  Future<void> updateLocale(String languageCode) {
+    return (_db.update(_db.appSettings)..where((t) => t.id.equals(1))).write(
+      AppSettingsCompanion(localeLanguageCode: Value(languageCode)),
+    );
+  }
 }
 
+/// Placeholder for the not-yet-implemented S3 backup feature.
 class BackupRepository {
   BackupRepository();
 

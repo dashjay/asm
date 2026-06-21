@@ -1,3 +1,5 @@
+import 'package:asm/l10n/app_localizations.dart';
+
 enum AccountCategory {
   current,
   fixedAsset,
@@ -5,12 +7,12 @@ enum AccountCategory {
   liability,
   receivable;
 
-  String get label => switch (this) {
-        current => '活期',
-        fixedAsset => '固定资产',
-        investment => '投资理财',
-        liability => '负债',
-        receivable => '债权',
+  String label(AppLocalizations l10n) => switch (this) {
+        current => l10n.accountCategoryCurrent,
+        fixedAsset => l10n.accountCategoryFixedAsset,
+        investment => l10n.accountCategoryInvestment,
+        liability => l10n.accountCategoryLiability,
+        receivable => l10n.accountCategoryReceivable,
       };
 
   bool get isLiability => this == AccountCategory.liability;
@@ -50,15 +52,15 @@ enum ChangeReason {
   fxFluctuation,
   other;
 
-  String get label => switch (this) {
-        salary => '工资收入',
-        investmentReturn => '投资收益',
-        repayment => '还贷',
-        purchase => '购置资产',
-        transfer => '转账',
-        gift => '赠予',
-        fxFluctuation => '汇率波动',
-        other => '其他',
+  String label(AppLocalizations l10n) => switch (this) {
+        salary => l10n.changeReasonSalary,
+        investmentReturn => l10n.changeReasonInvestmentReturn,
+        repayment => l10n.changeReasonRepayment,
+        purchase => l10n.changeReasonPurchase,
+        transfer => l10n.changeReasonTransfer,
+        gift => l10n.changeReasonGift,
+        fxFluctuation => l10n.changeReasonFxFluctuation,
+        other => l10n.changeReasonOther,
       };
 
   static ChangeReason fromString(String? value) {
@@ -77,12 +79,12 @@ enum ChartRange {
   oneYear,
   all;
 
-  String get label => switch (this) {
+  String label(AppLocalizations l10n) => switch (this) {
         oneMonth => '1M',
         threeMonths => '3M',
         sixMonths => '6M',
         oneYear => '1Y',
-        all => '全部',
+        all => l10n.chartRangeAll,
       };
 
   Duration? get duration => switch (this) {

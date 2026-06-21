@@ -7,12 +7,14 @@ import '../../core/providers/providers.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/currency/currency_converter.dart';
 import '../../domain/models/enums.dart';
+import '../../l10n/app_localizations.dart';
 
 class AccountsPage extends ConsumerWidget {
   const AccountsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final accountsAsync = ref.watch(accountsProvider);
     final membersAsync = ref.watch(membersProvider);
     final converterAsync = ref.watch(latestConverterProvider);
@@ -20,7 +22,7 @@ class AccountsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('账户'),
+        title: Text(l10n.accountsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -33,7 +35,7 @@ class AccountsPage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('$e')),
         data: (accounts) {
           if (accounts.isEmpty) {
-            return const Center(child: Text('暂无账户，点击 + 添加'));
+            return Center(child: Text(l10n.noAccountsHint));
           }
 
           return membersAsync.when(
@@ -59,7 +61,7 @@ class AccountsPage extends ConsumerWidget {
                     children: [
                       for (final entry in grouped.entries) ...[
                         Text(
-                          memberMap[entry.key]?.name ?? '未知成员',
+                          memberMap[entry.key]?.name ?? l10n.unknownMember,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 8),
@@ -99,6 +101,9 @@ class _AccountTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+
     return FutureBuilder(
       future: ref.read(accountRepositoryProvider).latestSnapshot(account.id),
       builder: (context, snapshot) {
@@ -115,15 +120,17 @@ class _AccountTile extends ConsumerWidget {
         return Card(
           child: ListTile(
             title: Text(account.name),
-            subtitle: Text('${category.label} · ${currency.code}'),
+            subtitle: Text('${category.label(l10n)} · ${currency.code}'),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(formatMoney(amount, currency)),
+                Text(formatMoney(amount, currency, locale)),
                 if (currency != displayCurrency)
                   Text(
-                    '≈ ${formatMoney(converted, displayCurrency)}',
+                    l10n.approxAmount(
+                      formatMoney(converted, displayCurrency, locale),
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
               ],

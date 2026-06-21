@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
+import '../../l10n/app_localizations.dart';
 
 class MembersPage extends ConsumerWidget {
   const MembersPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final membersAsync = ref.watch(membersProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('家庭成员'),
+        title: Text(l10n.familyMembers),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -26,7 +28,7 @@ class MembersPage extends ConsumerWidget {
         data: (members) => ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: members.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
             final member = members[index];
             return Card(
@@ -59,14 +61,15 @@ class MembersPage extends ConsumerWidget {
     int? id,
     String initialName = '',
   }) async {
+    final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: initialName);
     final result = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(id == null ? '添加成员' : '编辑成员'),
+        title: Text(id == null ? l10n.addMember : l10n.editMember),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: '姓名'),
+          decoration: InputDecoration(labelText: l10n.nameLabel),
         ),
         actions: [
           if (id != null)
@@ -75,15 +78,15 @@ class MembersPage extends ConsumerWidget {
                 await ref.read(memberRepositoryProvider).delete(id);
                 if (context.mounted) Navigator.pop(context, false);
               },
-              child: const Text('删除', style: TextStyle(color: Colors.red)),
+              child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
             ),
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('保存'),
+            child: Text(l10n.save),
           ),
         ],
       ),

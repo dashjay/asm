@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/backup/backup_service.dart';
+import '../../core/notifications/notification_scheduler.dart';
 import '../../core/providers/providers.dart';
 import '../../domain/models/enums.dart';
+import '../../l10n/app_localizations.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -51,18 +53,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _saveThresholds() async {
+    final l10n = AppLocalizations.of(context)!;
     await ref.read(settingsRepositoryProvider).updateThresholds(
           percent: double.parse(_percentController.text),
           amount: double.parse(_amountController.text),
         );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('阈值已保存')),
+        SnackBar(content: Text(l10n.thresholdsSaved)),
       );
     }
   }
 
   Future<void> _saveS3() async {
+    final l10n = AppLocalizations.of(context)!;
     await ref.read(settingsRepositoryProvider).updateS3Config(
           endpoint: _s3EndpointController.text.trim(),
           bucket: _s3BucketController.text.trim(),
@@ -71,13 +75,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await ref.read(backupServiceProvider).saveS3Secret(_s3SecretController.text);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('S3 配置已保存')),
+        SnackBar(content: Text(l10n.s3ConfigSaved)),
       );
     }
   }
 
+  Future<void> _updateLocale(String languageCode) async {
+    await ref.read(settingsRepositoryProvider).updateLocale(languageCode);
+    await NotificationScheduler(
+      ref.read(accountRepositoryProvider),
+      ref.read(settingsRepositoryProvider),
+    ).rescheduleAll();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (!_loaded) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -85,11 +99,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final settingsAsync = ref.watch(settingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('展示设置', style: Theme.of(context).textTheme.titleMedium),
+          Text(l10n.language, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          settingsAsync.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (e, _) => Text('$e'),
+            data: (settings) {
+              final locale = settings.localeLanguageCode;
+              return SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(value: 'en', label: Text(l10n.languageEnglish)),
+                  ButtonSegment(value: 'zh', label: Text(l10n.languageChinese)),
+                ],
+                selected: {locale},
+                onSelectionChanged: (set) => _updateLocale(set.first),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          Text(l10n.displaySettings, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           settingsAsync.when(
             loading: () => const LinearProgressIndicator(),
@@ -110,81 +142,95 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             },
           ),
           const SizedBox(height: 24),
-          Text('大额变动阈值', style: Theme.of(context).textTheme.titleMedium),
+          Text(l10n.largeChangeThresholds, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
             controller: _percentController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: '变动百分比 (%)'),
+            decoration: InputDecoration(labelText: l10n.changePercentLabel),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: '变动金额（展示币种）'),
+            decoration: InputDecoration(labelText: l10n.changeAmountLabel),
           ),
           const SizedBox(height: 12),
-          FilledButton(onPressed: _saveThresholds, child: const Text('保存阈值')),
+          FilledButton(onPressed: _saveThresholds, child: Text(l10n.saveThresholds)),
           const SizedBox(height: 24),
-          Text('数据备份', style: Theme.of(context).textTheme.titleMedium),
+          Text(l10n.dataBackup, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           FilledButton.icon(
             onPressed: () async {
               try {
                 await ref.read(backupServiceProvider).exportDatabase();
+              } on UnsupportedError {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.backupWebExportUnsupported)),
+                  );
+                }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('导出失败: $e')),
+                    SnackBar(content: Text(l10n.exportFailed('$e'))),
                   );
                 }
               }
             },
             icon: const Icon(Icons.upload_file),
-            label: const Text('导出本地备份'),
+            label: Text(l10n.exportLocalBackup),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () async {
-              await ref.read(backupServiceProvider).importDatabase();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('导入完成，请重启应用')),
-                );
+              try {
+                await ref.read(backupServiceProvider).importDatabase();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.importCompleteRestart)),
+                  );
+                }
+              } on UnsupportedError {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.backupWebImportUnsupported)),
+                  );
+                }
               }
             },
             icon: const Icon(Icons.download),
-            label: const Text('导入备份'),
+            label: Text(l10n.importBackup),
           ),
           const SizedBox(height: 24),
-          Text('S3 备份（预留）', style: Theme.of(context).textTheme.titleMedium),
+          Text(l10n.s3BackupReserved, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
             controller: _s3EndpointController,
-            decoration: const InputDecoration(labelText: 'Endpoint'),
+            decoration: InputDecoration(labelText: l10n.s3Endpoint),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _s3BucketController,
-            decoration: const InputDecoration(labelText: 'Bucket'),
+            decoration: InputDecoration(labelText: l10n.s3Bucket),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _s3AccessKeyController,
-            decoration: const InputDecoration(labelText: 'Access Key'),
+            decoration: InputDecoration(labelText: l10n.s3AccessKey),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _s3SecretController,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Secret Key'),
+            decoration: InputDecoration(labelText: l10n.s3SecretKey),
           ),
           const SizedBox(height: 12),
-          FilledButton(onPressed: _saveS3, child: const Text('保存 S3 配置')),
+          FilledButton(onPressed: _saveS3, child: Text(l10n.saveS3Config)),
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: null,
-            child: const Text('上传到 S3（即将支持）'),
+            child: Text(l10n.uploadToS3ComingSoon),
           ),
           const SizedBox(height: 64),
         ],

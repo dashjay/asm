@@ -1,0 +1,35 @@
+---
+description: UI and localization conventions for feature pages
+globs: lib/features/**/*.dart
+alwaysApply: false
+---
+
+# UI & Localization
+
+## No hardcoded user-facing strings
+
+Every string shown to the user comes from `AppLocalizations`.
+
+```dart
+final l10n = AppLocalizations.of(context)!;
+Text(l10n.familyNetWorth); // GOOD
+Text('家庭净资产');          // BAD
+```
+
+To add copy: edit `lib/l10n/app_en.arb` + `app_zh.arb`, then run
+`flutter gen-l10n` (or build). Seed/dev-only text that is intentionally not
+localized belongs in `lib/core/app_constants.dart`.
+
+## Formatting
+
+Use helpers in `lib/core/utils/formatters.dart` (`formatMoney`,
+`formatSignedMoney`, `formatDate`, ...) with the current locale; never format
+money/dates by hand.
+
+## Widgets
+
+- Read data via `ref.watch(provider)` and handle `loading` / `error` with
+  `AsyncValue.when`.
+- Prefer `StatelessWidget` when a widget only renders passed-in data (e.g. pass
+  a precomputed forecast in rather than re-reading a provider).
+- Use `(_, _)` for unused callback params (not `(_, __)`).

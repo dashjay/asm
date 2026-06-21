@@ -1,20 +1,22 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/db/app_database.dart';
 import '../../data/repositories/repositories.dart';
+import '../../l10n/app_localizations.dart';
 
 class NotificationScheduler {
-  NotificationScheduler(this._accountRepo);
+  NotificationScheduler(this._accountRepo, this._settingsRepo);
 
   final AccountRepository _accountRepo;
+  final SettingsRepository _settingsRepo;
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
   static const _channelId = 'account_reminders';
-  static const _channelName = '账户更新提醒';
 
   Future<void> initialize() async {
     if (kIsWeb || _initialized) return;
@@ -36,10 +38,19 @@ class NotificationScheduler {
     _initialized = true;
   }
 
+  Future<void> cancelForAccount(int accountId) async {
+    if (kIsWeb) return;
+    await initialize();
+    await _plugin.cancel(accountId);
+  }
+
   Future<void> rescheduleAll() async {
     if (kIsWeb) return;
     await initialize();
     await _plugin.cancelAll();
+
+    final settings = await _settingsRepo.get();
+    final l10n = lookupAppLocalizations(Locale(settings.localeLanguageCode));
 
     final accounts = await _accountRepo.watchActive().first;
     for (final account in accounts) {
@@ -47,26 +58,34 @@ class NotificationScheduler {
       final latest = await _accountRepo.latestSnapshot(account.id);
       final base = latest?.recordedAt ?? account.createdAt;
       final due = base.add(Duration(days: account.reminderIntervalDays));
-      if (due.isBefore(DateTime.now())) {
-        await _schedule(account, DateTime.now().add(const Duration(hours: 1)));
-      } else {
-        await _schedule(account, due);
-      }
+      final when = due.isBefore(DateTime.now())
+          ? DateTime.now().add(const Duration(hours: 1))
+          : due;
+      await _schedule(account, when, l10n, latest);
     }
   }
 
-  Future<void> _schedule(Account account, DateTime when) async {
-    final daysSince = await _daysSinceUpdate(account.id);
+  Future<void> _schedule(
+    Account account,
+    DateTime when,
+    AppLocalizations l10n,
+    BalanceSnapshot? latestSnapshot,
+  ) async {
+    // Reuse the snapshot already fetched by rescheduleAll instead of querying
+    // the database again per account.
+    final daysSince = latestSnapshot == null
+        ? 999
+        : DateTime.now().difference(latestSnapshot.recordedAt).inDays;
     await _plugin.zonedSchedule(
       account.id,
-      '账户更新提醒',
-      '该更新【${account.name}】余额了（上次更新 $daysSince 天前）',
+      l10n.notificationTitle,
+      l10n.notificationBody(account.name, daysSince),
       tz.TZDateTime.from(when, tz.local),
       NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
-          _channelName,
-          channelDescription: '周期提醒更新账户余额',
+          l10n.notificationChannelName,
+          channelDescription: l10n.notificationChannelDescription,
         ),
         iOS: const DarwinNotificationDetails(),
       ),
@@ -75,11 +94,5 @@ class NotificationScheduler {
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: '/accounts/${account.id}',
     );
-  }
-
-  Future<int> _daysSinceUpdate(int accountId) async {
-    final latest = await _accountRepo.latestSnapshot(accountId);
-    if (latest == null) return 999;
-    return DateTime.now().difference(latest.recordedAt).inDays;
   }
 }

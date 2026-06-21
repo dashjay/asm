@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../domain/models/enums.dart';
+import '../../l10n/app_localizations.dart';
 
 Future<({ChangeReason reason, String note})?> showChangeReasonSheet(
   BuildContext context, {
@@ -14,6 +15,8 @@ Future<({ChangeReason reason, String note})?> showChangeReasonSheet(
 }) {
   ChangeReason selected = ChangeReason.other;
   final noteController = TextEditingController();
+  final l10n = AppLocalizations.of(context)!;
+  final locale = Localizations.localeOf(context).languageCode;
 
   return showModalBottomSheet<({ChangeReason reason, String note})>(
     context: context,
@@ -33,23 +36,27 @@ Future<({ChangeReason reason, String note})?> showChangeReasonSheet(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '大额变动 - $accountName',
+                  l10n.largeChangeTitle(accountName),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${formatMoney(previous, currency)} → ${formatMoney(current, currency)} '
-                  '(${formatSignedMoney(delta, currency)}, ${formatPercent(deltaPercent)})',
+                  l10n.changeAmountDetail(
+                    formatMoney(previous, currency, locale),
+                    formatMoney(current, currency, locale),
+                    formatSignedMoney(delta, currency, locale),
+                    formatPercent(deltaPercent),
+                  ),
                 ),
                 const SizedBox(height: 16),
-                Text('变动原因', style: Theme.of(context).textTheme.labelLarge),
+                Text(l10n.changeReason, style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: ChangeReason.values.map((reason) {
                     return ChoiceChip(
-                      label: Text(reason.label),
+                      label: Text(reason.label(l10n)),
                       selected: selected == reason,
                       onSelected: (_) => setState(() => selected = reason),
                     );
@@ -58,7 +65,7 @@ Future<({ChangeReason reason, String note})?> showChangeReasonSheet(
                 const SizedBox(height: 16),
                 TextField(
                   controller: noteController,
-                  decoration: const InputDecoration(labelText: '备注（可选）'),
+                  decoration: InputDecoration(labelText: l10n.noteOptional),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
@@ -69,7 +76,7 @@ Future<({ChangeReason reason, String note})?> showChangeReasonSheet(
                       context,
                       (reason: selected, note: noteController.text.trim()),
                     ),
-                    child: const Text('确认'),
+                    child: Text(l10n.confirm),
                   ),
                 ),
               ],

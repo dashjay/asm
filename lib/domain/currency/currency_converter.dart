@@ -1,11 +1,18 @@
 import '../models/enums.dart';
+import 'fx_defaults.dart';
 
-/// Cross rates keyed by "FROM_TO", e.g. "usd_cny" => 7.25 means 1 USD = 7.25 CNY.
+/// Converts amounts between [Currency] values using a snapshot of cross rates.
+///
+/// Rates are keyed by `"from_to"`, e.g. `"usd_cny" => 7.25` means 1 USD = 7.25
+/// CNY. The converter is immutable: it represents the rates at a single point
+/// in time so historical calculations stay reproducible.
 class CurrencyConverter {
   CurrencyConverter(this._rates);
 
   final Map<String, double> _rates;
 
+  /// Builds a fully-populated converter from the two rates we actually capture
+  /// (USD->CNY and USD->SGD), deriving every other direction from them.
   factory CurrencyConverter.fromUsdRates({
     required double usdToCny,
     required double usdToSgd,
@@ -20,6 +27,9 @@ class CurrencyConverter {
     });
   }
 
+  /// Builds a converter from stored rate rows. When both USD pairs are present
+  /// we re-derive the full cross-rate matrix so partial data never produces a
+  /// missing-rate error at conversion time.
   factory CurrencyConverter.fromRateRows(
     List<({String from, String to, double rate})> rows,
   ) {
@@ -59,6 +69,6 @@ class CurrencyConverter {
     return _rates['${from.name}_${to.name}'];
   }
 
-  double get usdToCny => _rates['usd_cny'] ?? 7.25;
-  double get usdToSgd => _rates['usd_sgd'] ?? 1.35;
+  double get usdToCny => _rates['usd_cny'] ?? kDefaultUsdToCny;
+  double get usdToSgd => _rates['usd_sgd'] ?? kDefaultUsdToSgd;
 }

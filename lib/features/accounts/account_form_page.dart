@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/notifications/notification_scheduler.dart';
 import '../../core/providers/providers.dart';
 import '../../domain/models/enums.dart';
+import '../../l10n/app_localizations.dart';
 
 class AccountFormPage extends ConsumerStatefulWidget {
   const AccountFormPage({super.key, this.accountId});
@@ -54,10 +56,11 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     final repo = ref.read(accountRepositoryProvider);
     if (_memberId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择成员')),
+        SnackBar(content: Text(l10n.selectMemberFirst)),
       );
       return;
     }
@@ -86,8 +89,44 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     if (mounted) context.pop();
   }
 
+  Future<void> _delete() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.deleteAccountTitle),
+        content: Text(l10n.deleteAccountWarning),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              l10n.deleteAccountConfirm,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final accountId = widget.accountId!;
+    await ref.read(accountRepositoryProvider).delete(accountId);
+    await NotificationScheduler(
+      ref.read(accountRepositoryProvider),
+      ref.read(settingsRepositoryProvider),
+    ).cancelForAccount(accountId);
+
+    if (mounted) context.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final membersAsync = ref.watch(membersProvider);
 
     if (_loading) {
@@ -96,14 +135,16 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.accountId == null ? '新建账户' : '编辑账户'),
+        title: Text(
+          widget.accountId == null ? l10n.newAccount : l10n.editAccount,
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(labelText: '账户名称'),
+            decoration: InputDecoration(labelText: l10n.accountNameLabel),
           ),
           const SizedBox(height: 16),
           membersAsync.when(
@@ -112,8 +153,8 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
             data: (members) {
               _memberId ??= members.isNotEmpty ? members.first.id : null;
               return DropdownButtonFormField<int>(
-                value: _memberId,
-                decoration: const InputDecoration(labelText: '家庭成员'),
+                initialValue: _memberId,
+                decoration: InputDecoration(labelText: l10n.familyMemberLabel),
                 items: members
                     .map((m) => DropdownMenuItem(value: m.id, child: Text(m.name)))
                     .toList(),
@@ -123,17 +164,20 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<AccountCategory>(
-            value: _category,
-            decoration: const InputDecoration(labelText: '账户类别'),
+            initialValue: _category,
+            decoration: InputDecoration(labelText: l10n.accountCategoryLabel),
             items: AccountCategory.values
-                .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
+                .map((c) => DropdownMenuItem(
+                      value: c,
+                      child: Text(c.label(l10n)),
+                    ))
                 .toList(),
             onChanged: (v) => setState(() => _category = v!),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<Currency>(
-            value: _currency,
-            decoration: const InputDecoration(labelText: '币种'),
+            initialValue: _currency,
+            decoration: InputDecoration(labelText: l10n.currencyLabel),
             items: Currency.values
                 .map((c) => DropdownMenuItem(value: c, child: Text(c.code)))
                 .toList(),
@@ -147,26 +191,40 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
               controller: _balanceController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: '初始余额（${_currency.code}，可选）',
+                labelText: l10n.initialBalanceOptional(_currency.code),
               ),
             ),
           ],
           const SizedBox(height: 16),
           SwitchListTile(
-            title: const Text('启用更新提醒'),
+            title: Text(l10n.enableUpdateReminder),
             value: _reminderEnabled,
             onChanged: (v) => setState(() => _reminderEnabled = v),
           ),
           DropdownButtonFormField<int>(
-            value: _reminderDays,
-            decoration: const InputDecoration(labelText: '提醒周期'),
+            initialValue: _reminderDays,
+            decoration: InputDecoration(labelText: l10n.reminderIntervalLabel),
             items: const [7, 30, 90]
-                .map((d) => DropdownMenuItem(value: d, child: Text('$d 天')))
+                .map((d) => DropdownMenuItem(
+                      value: d,
+                      child: Text(l10n.reminderDays(d)),
+                    ))
                 .toList(),
             onChanged: (v) => setState(() => _reminderDays = v!),
           ),
           const SizedBox(height: 24),
-          FilledButton(onPressed: _save, child: const Text('保存')),
+          FilledButton(onPressed: _save, child: Text(l10n.save)),
+          if (widget.accountId != null) ...[
+            const SizedBox(height: 32),
+            OutlinedButton(
+              onPressed: _delete,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(color: Theme.of(context).colorScheme.error),
+              ),
+              child: Text(l10n.delete),
+            ),
+          ],
         ],
       ),
     );

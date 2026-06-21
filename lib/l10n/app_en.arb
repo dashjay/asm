@@ -1,0 +1,218 @@
+{
+  "@@locale": "en",
+  "appTitle": "Family Assets",
+  "navHome": "Home",
+  "navAccounts": "Accounts",
+  "navCharts": "Trends",
+  "navFx": "FX Rates",
+  "navSettings": "Settings",
+  "updateBalances": "Update Balances",
+  "loadFailed": "Failed to load: {error}",
+  "@loadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "accountNotFound": "Account not found",
+  "changeReason": "Change reason",
+  "close": "Close",
+  "noSnapshots": "No snapshots yet",
+  "nativeCurrency": "Native",
+  "noDataUpdateFirst": "No data yet. Update balances first.",
+  "familyNetWorth": "Family Net Worth",
+  "changeSinceLast": "Since last update {amount}",
+  "@changeSinceLast": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "daysSinceUpdate": "{days, plural, =1{1 day since last update} other{{days} days since last update}}",
+  "@daysSinceUpdate": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "fxMayBeStale": "Exchange rates may be outdated",
+  "fxLastRecordedDaysAgo": "Last recorded {days} days ago. Consider updating.",
+  "@fxLastRecordedDaysAgo": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "goUpdate": "Update",
+  "familyTrend": "Family Trend",
+  "accountsToUpdate": "Accounts to Update",
+  "overdueDays": "Over {days}-day cycle",
+  "@overdueDays": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "trendForecast": "Trend Forecast",
+  "forecastDescription": "Based on the recent 6-month trend, family net worth in ~3 months is estimated at {amount}",
+  "@forecastDescription": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "forecastDisclaimer": "For reference only. Not investment advice.",
+  "accountsTitle": "Accounts",
+  "noAccountsHint": "No accounts yet. Tap + to add one.",
+  "unknownMember": "Unknown member",
+  "approxAmount": "≈ {amount}",
+  "@approxAmount": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "fxHistory": "FX History",
+  "noFxRecords": "No FX records yet",
+  "settingsTitle": "Settings",
+  "language": "Language",
+  "languageEnglish": "English",
+  "languageChinese": "中文",
+  "displaySettings": "Display",
+  "largeChangeThresholds": "Large Change Thresholds",
+  "changePercentLabel": "Change percent (%)",
+  "changeAmountLabel": "Change amount (display currency)",
+  "saveThresholds": "Save Thresholds",
+  "thresholdsSaved": "Thresholds saved",
+  "dataBackup": "Data Backup",
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "exportLocalBackup": "Export Local Backup",
+  "importCompleteRestart": "Import complete. Please restart the app.",
+  "importBackup": "Import Backup",
+  "s3BackupReserved": "S3 Backup (Coming Soon)",
+  "s3Endpoint": "Endpoint",
+  "s3Bucket": "Bucket",
+  "s3AccessKey": "Access Key",
+  "s3SecretKey": "Secret Key",
+  "saveS3Config": "Save S3 Config",
+  "s3ConfigSaved": "S3 config saved",
+  "uploadToS3ComingSoon": "Upload to S3 (Coming Soon)",
+  "assetTrends": "Asset Trends",
+  "familyTotalNetWorth": "Family Total Net Worth",
+  "wizardStepFx": "Enter FX Rates",
+  "wizardStepBalances": "Enter Balances",
+  "wizardStepPreview": "Preview & Confirm",
+  "enterValidFxRates": "Please enter valid exchange rates",
+  "confirmSubmit": "Confirm",
+  "next": "Next",
+  "previous": "Previous",
+  "fxSnapshot": "FX Snapshot",
+  "usdToCnyLabel": "1 USD = ? CNY",
+  "usdToSgdLabel": "1 USD = ? SGD",
+  "sourceNoteLabel": "Source note (e.g. Bank of China app)",
+  "accountBalances": "Account Balances",
+  "preview": "Preview",
+  "accountBalanceLabel": "{name} ({symbol})",
+  "@accountBalanceLabel": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "symbol": {"type": "String"}
+    }
+  },
+  "familyNetWorthCurrency": "{currency} Family Net Worth",
+  "@familyNetWorthCurrency": {
+    "placeholders": {
+      "currency": {"type": "String"}
+    }
+  },
+  "compareWithPrevious": "Compared to last update ({currency})",
+  "@compareWithPrevious": {
+    "placeholders": {
+      "currency": {"type": "String"}
+    }
+  },
+  "balanceChange": "Balance change: {amount}",
+  "@balanceChange": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "fxChange": "FX change: {amount}",
+  "@fxChange": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "largeChangeTitle": "Large change - {accountName}",
+  "@largeChangeTitle": {
+    "placeholders": {
+      "accountName": {"type": "String"}
+    }
+  },
+  "changeAmountDetail": "{previous} → {current} ({delta}, {percent})",
+  "@changeAmountDetail": {
+    "placeholders": {
+      "previous": {"type": "String"},
+      "current": {"type": "String"},
+      "delta": {"type": "String"},
+      "percent": {"type": "String"}
+    }
+  },
+  "noteOptional": "Note (optional)",
+  "confirm": "Confirm",
+  "familyMembers": "Family Members",
+  "addMember": "Add Member",
+  "editMember": "Edit Member",
+  "nameLabel": "Name",
+  "delete": "Delete",
+  "deleteAccountTitle": "Delete Account?",
+  "deleteAccountWarning": "We recommend keeping this account and updating its balance to 0 instead of deleting it. This preserves your historical records.\n\nIf you delete this account, all balance snapshots and update history for it will be permanently removed.",
+  "deleteAccountConfirm": "Delete anyway",
+  "cancel": "Cancel",
+  "save": "Save",
+  "newAccount": "New Account",
+  "editAccount": "Edit Account",
+  "accountNameLabel": "Account name",
+  "familyMemberLabel": "Family member",
+  "accountCategoryLabel": "Account category",
+  "currencyLabel": "Currency",
+  "initialBalanceOptional": "Initial balance ({currency}, optional)",
+  "@initialBalanceOptional": {
+    "placeholders": {
+      "currency": {"type": "String"}
+    }
+  },
+  "enableUpdateReminder": "Enable update reminder",
+  "reminderIntervalLabel": "Reminder interval",
+  "reminderDays": "{days} days",
+  "@reminderDays": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "selectMemberFirst": "Please select a member",
+  "accountCategoryCurrent": "Current",
+  "accountCategoryFixedAsset": "Fixed Asset",
+  "accountCategoryInvestment": "Investment",
+  "accountCategoryLiability": "Liability",
+  "accountCategoryReceivable": "Receivable",
+  "changeReasonSalary": "Salary",
+  "changeReasonInvestmentReturn": "Investment Return",
+  "changeReasonRepayment": "Loan Repayment",
+  "changeReasonPurchase": "Asset Purchase",
+  "changeReasonTransfer": "Transfer",
+  "changeReasonGift": "Gift",
+  "changeReasonFxFluctuation": "FX Fluctuation",
+  "changeReasonOther": "Other",
+  "chartRangeAll": "All",
+  "notificationChannelName": "Account Update Reminders",
+  "notificationChannelDescription": "Periodic reminders to update account balances",
+  "notificationTitle": "Account Update Reminder",
+  "notificationBody": "Time to update balance for {accountName} (last updated {days} days ago)",
+  "@notificationBody": {
+    "placeholders": {
+      "accountName": {"type": "String"},
+      "days": {"type": "int"}
+    }
+  },
+  "backupWebExportUnsupported": "Web uses IndexedDB. File export is not supported yet.",
+  "backupWebImportUnsupported": "Web import is not supported yet."
+}

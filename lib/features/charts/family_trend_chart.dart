@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
 import '../../core/utils/formatters.dart';
+import 'chart_axis.dart';
+import 'line_chart_touch.dart';
 import '../../domain/forecast/linear_forecast.dart';
 import '../../domain/models/enums.dart';
+import '../../l10n/app_localizations.dart';
 
 class FamilyTrendChart extends ConsumerStatefulWidget {
   const FamilyTrendChart({
@@ -36,14 +39,17 @@ class _FamilyTrendChartState extends ConsumerState<FamilyTrendChart> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final trendAsync = ref.watch(familyTrendProvider(_range));
 
     return trendAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('$e')),
+      skipLoadingOnReload: true,
       data: (points) {
         if (points.isEmpty) {
-          return const Center(child: Text('暂无数据，请先更新余额'));
+          return Center(child: Text(l10n.noDataUpdateFirst));
         }
 
         final spots = points
@@ -77,6 +83,24 @@ class _FamilyTrendChartState extends ConsumerState<FamilyTrendChart> {
         final minY = allY.reduce((a, b) => a < b ? a : b);
         final maxY = allY.reduce((a, b) => a > b ? a : b);
         final padding = (maxY - minY) * 0.1 + 1;
+        final paddedMinY = minY - padding;
+        final paddedMaxY = maxY + padding;
+        final yInterval = niceInterval(paddedMinY, paddedMaxY);
+
+        // X is the point index; keep the data line at one dot per record and
+        // only subsample the axis labels so they never overlap.
+        final labelIndices = visibleLabelIndices(points.length);
+        final maxX = forecastSpots.isNotEmpty
+            ? forecastSpots.last.x
+            : (points.length - 1).toDouble();
+        final spanDays = points.last.session.recordedAt
+            .difference(points.first.session.recordedAt)
+            .inDays;
+        final useMonthYear = spanDays > 62;
+        final axisLabelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 10,
+            );
 
         return Column(
           children: [
@@ -85,7 +109,10 @@ class _FamilyTrendChartState extends ConsumerState<FamilyTrendChart> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: SegmentedButton<ChartRange>(
                   segments: ChartRange.values
-                      .map((r) => ButtonSegment(value: r, label: Text(r.label)))
+                      .map((r) => ButtonSegment(
+                            value: r,
+                            label: Text(r.label(l10n)),
+                          ))
                       .toList(),
                   selected: {_range},
                   onSelectionChanged: (set) => setState(() => _range = set.first),
@@ -94,33 +121,58 @@ class _FamilyTrendChartState extends ConsumerState<FamilyTrendChart> {
             Expanded(
               child: LineChart(
                 LineChartData(
-                  minY: minY - padding,
-                  maxY: maxY + padding,
+                  minX: 0,
+                  maxX: maxX,
+                  minY: paddedMinY,
+                  maxY: paddedMaxY,
+                  lineTouchData: themedLineTouchData(
+                    context,
+                    formatValue: (y) =>
+                        formatMoney(y, widget.displayCurrency, locale),
+                    tooltipBarIndex: 0,
+                  ),
                   gridData: const FlGridData(show: true, drawVerticalLine: false),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: !widget.compact,
-                        reservedSize: 56,
-                        getTitlesWidget: (value, meta) => Text(
-                          formatMoney(value, widget.displayCurrency),
-                          style: const TextStyle(fontSize: 10),
+                        reservedSize: 48,
+                        minIncluded: false,
+                        maxIncluded: false,
+                        interval: yInterval,
+                        getTitlesWidget: (value, meta) => SideTitleWidget(
+                          meta: meta,
+                          space: 4,
+                          child: Text(
+                            formatAxisMoney(value, widget.displayCurrency, locale),
+                            style: axisLabelStyle,
+                          ),
                         ),
                       ),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: !widget.compact,
+                        reservedSize: 28,
+                        interval: 1,
                         getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index < 0 || index >= points.length) {
+                          final i = value.round();
+                          if ((value - i).abs() > 0.01 ||
+                              i < 0 ||
+                              i >= points.length ||
+                              !labelIndices.contains(i)) {
                             return const SizedBox.shrink();
                           }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4),
+                          final date = points[i].session.recordedAt;
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 4,
                             child: Text(
-                              formatDate(points[index].session.recordedAt),
-                              style: const TextStyle(fontSize: 10),
+                              useMonthYear
+                                  ? formatMonthYear(date, locale)
+                                  : formatShortDate(date, locale),
+                              style: axisLabelStyle,
+                              textAlign: TextAlign.center,
                             ),
                           );
                         },

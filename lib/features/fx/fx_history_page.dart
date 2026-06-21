@@ -6,22 +6,26 @@ import '../../data/db/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/models/enums.dart';
+import '../charts/line_chart_touch.dart';
+import '../../l10n/app_localizations.dart';
 
 class FxHistoryPage extends ConsumerWidget {
   const FxHistoryPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final fxAsync = ref.watch(fxHistoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('汇率历史')),
+      appBar: AppBar(title: Text(l10n.fxHistory)),
       body: fxAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (snapshots) {
           if (snapshots.isEmpty) {
-            return const Center(child: Text('暂无汇率记录'));
+            return Center(child: Text(l10n.noFxRecords));
           }
 
           return FutureBuilder<List<({DateTime date, double cny, double sgd})>>(
@@ -52,6 +56,11 @@ class FxHistoryPage extends ConsumerWidget {
                         height: 200,
                         child: LineChart(
                           LineChartData(
+                            lineTouchData: themedLineTouchData(
+                              context,
+                              formatValue: (y) => y.toStringAsFixed(4),
+                              tooltipBarIndex: null,
+                            ),
                             lineBarsData: [
                               LineChartBarData(
                                 spots: cnySpots,
@@ -73,10 +82,10 @@ class FxHistoryPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  const Row(
                     children: [
                       _Legend(color: Colors.red, label: 'USD/CNY'),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       _Legend(color: Colors.blue, label: 'USD/SGD'),
                     ],
                   ),
@@ -102,7 +111,7 @@ class FxHistoryPage extends ConsumerWidget {
                             .firstOrNull;
                         return Card(
                           child: ListTile(
-                            title: Text(formatDateTime(snap.recordedAt)),
+                            title: Text(formatDateTime(snap.recordedAt, locale)),
                             subtitle: Text(
                               'USD/CNY: ${cny?.toStringAsFixed(4) ?? '-'} · '
                               'USD/SGD: ${sgd?.toStringAsFixed(4) ?? '-'}',

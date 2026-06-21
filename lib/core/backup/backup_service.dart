@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../app_constants.dart';
 import '../providers/providers.dart';
 import '../../data/repositories/repositories.dart';
 import 'backup_io.dart' if (dart.library.js_interop) 'backup_stub.dart';
@@ -19,14 +20,14 @@ class BackupService {
 
   Future<String> exportDatabase() async {
     if (kIsWeb) {
-      throw UnsupportedError('Web 端请使用浏览器 IndexedDB，暂不支持文件导出');
+      throw UnsupportedError('web_export');
     }
     return exportDatabaseFile();
   }
 
   Future<void> importDatabase() async {
     if (kIsWeb) {
-      throw UnsupportedError('Web 端暂不支持导入本地备份文件');
+      throw UnsupportedError('web_import');
     }
     await importDatabaseFile(_ref);
   }
@@ -53,7 +54,7 @@ Future<String> exportDatabaseFile() async {
   final timestamp = DateTime.now().millisecondsSinceEpoch;
   final dest = p.join(exportDir.path, 'asm_backup_$timestamp.db');
   await copyDatabaseFile(source, dest);
-  await Share.shareXFiles([XFile(dest)], text: 'ASM 数据库备份');
+  await Share.shareXFiles([XFile(dest)], text: kBackupShareText);
   return dest;
 }
 

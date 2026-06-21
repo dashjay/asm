@@ -9,6 +9,7 @@ import '../../core/utils/formatters.dart';
 import '../../domain/currency/currency_converter.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/net_worth_calculator.dart';
+import '../../l10n/app_localizations.dart';
 import 'change_reason_sheet.dart';
 
 class SnapshotWizardPage extends ConsumerStatefulWidget {
@@ -25,7 +26,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
   final _sourceNoteController = TextEditingController();
   final _amountControllers = <int, TextEditingController>{};
   final _changeMeta = <int, ({ChangeReason reason, String note})>{};
-  Map<int, double> _previousAmounts = {};
+  final Map<int, double> _previousAmounts = {};
   List<Account> _accounts = [];
   bool _loading = true;
 
@@ -128,45 +129,47 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
   }
 
   Future<void> _submit() async {
-    final settings = await ref.read(settingsRepositoryProvider).get();
-    final display = Currency.fromString(settings.displayCurrency);
-    final previousFx = await ref.read(fxRepositoryProvider).latestConverter();
-
     final amounts = <int, double>{};
     for (final account in _accounts) {
       amounts[account.id] =
           double.parse(_amountControllers[account.id]!.text.trim());
     }
 
+    // Derived providers (home summary, trends, latest FX) watch the database
+    // directly, so they refresh on their own once this write commits.
     await ref.read(sessionRepositoryProvider).createSession(
           usdToCny: double.parse(_usdToCnyController.text),
           usdToSgd: double.parse(_usdToSgdController.text),
           sourceNote: _sourceNoteController.text.trim(),
           accountAmounts: amounts,
           changeMeta: _changeMeta,
-          thresholdPercent: settings.largeChangeThresholdPercent,
-          thresholdAmount: settings.largeChangeThresholdAmount,
-          displayCurrency: display,
-          previousFx: previousFx,
         );
 
-    await NotificationScheduler(ref.read(accountRepositoryProvider))
-        .rescheduleAll();
+    await NotificationScheduler(
+      ref.read(accountRepositoryProvider),
+      ref.read(settingsRepositoryProvider),
+    ).rescheduleAll();
 
-    ref.invalidate(homeSummaryProvider);
-    ref.invalidate(familyTrendProvider);
     if (mounted) context.pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final stepTitles = [
+      l10n.wizardStepFx,
+      l10n.wizardStepBalances,
+      l10n.wizardStepPreview,
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(['录入汇率', '录入余额', '预览确认'][_step]),
+        title: Text(stepTitles[_step]),
       ),
       body: Stepper(
         currentStep: _step,
@@ -175,7 +178,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
             if (double.tryParse(_usdToCnyController.text) == null ||
                 double.tryParse(_usdToSgdController.text) == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('请输入有效汇率')),
+                SnackBar(content: Text(l10n.enterValidFxRates)),
               );
               return;
             }
@@ -201,13 +204,13 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
               children: [
                 FilledButton(
                   onPressed: details.onStepContinue,
-                  child: Text(_step == 2 ? '确认提交' : '下一步'),
+                  child: Text(_step == 2 ? l10n.confirmSubmit : l10n.next),
                 ),
                 const SizedBox(width: 12),
                 if (_step > 0)
                   TextButton(
                     onPressed: details.onStepCancel,
-                    child: const Text('上一步'),
+                    child: Text(l10n.previous),
                   ),
               ],
             ),
@@ -215,7 +218,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
         },
         steps: [
           Step(
-            title: const Text('汇率快照'),
+            title: Text(l10n.fxSnapshot),
             isActive: _step >= 0,
             state: _step > 0 ? StepState.complete : StepState.indexed,
             content: Padding(
@@ -226,8 +229,8 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
                     controller: _usdToCnyController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: '1 USD = ? CNY',
+                    decoration: InputDecoration(
+                      labelText: l10n.usdToCnyLabel,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -235,15 +238,15 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
                     controller: _usdToSgdController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: '1 USD = ? SGD',
+                    decoration: InputDecoration(
+                      labelText: l10n.usdToSgdLabel,
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _sourceNoteController,
-                    decoration: const InputDecoration(
-                      labelText: '来源备注（如：中国银行 App）',
+                    decoration: InputDecoration(
+                      labelText: l10n.sourceNoteLabel,
                     ),
                   ),
                 ],
@@ -251,7 +254,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
             ),
           ),
           Step(
-            title: const Text('账户余额'),
+            title: Text(l10n.accountBalances),
             isActive: _step >= 1,
             state: _step > 1 ? StepState.complete : StepState.indexed,
             content: Padding(
@@ -263,11 +266,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
                       account: account,
                       controller: _amountControllers[account.id]!,
                       converter: _converter,
-                      displayCurrency: ref.watch(settingsProvider).value != null
-                          ? Currency.fromString(
-                              ref.watch(settingsProvider).value!.displayCurrency,
-                            )
-                          : Currency.cny,
+                      displayCurrency: ref.watch(displayCurrencyProvider),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -276,7 +275,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
             ),
           ),
           Step(
-            title: const Text('预览'),
+            title: Text(l10n.preview),
             isActive: _step >= 2,
             content: _PreviewStep(
               accounts: _accounts,
@@ -308,6 +307,8 @@ class _BalanceField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final currency = Currency.fromString(account.currency);
     final amount = double.tryParse(controller.text) ?? 0;
     final converted = converter.convert(
@@ -320,9 +321,9 @@ class _BalanceField extends StatelessWidget {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
-        labelText: '${account.name} (${currency.symbol})',
+        labelText: l10n.accountBalanceLabel(account.name, currency.symbol),
         suffixText: currency != displayCurrency
-            ? '≈ ${formatMoney(converted, displayCurrency)}'
+            ? l10n.approxAmount(formatMoney(converted, displayCurrency, locale))
             : null,
       ),
     );
@@ -342,6 +343,8 @@ class _PreviewStep extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final balances = accounts.map((a) {
       return AccountBalance(
         accountId: a.id,
@@ -359,7 +362,7 @@ class _PreviewStep extends ConsumerWidget {
           children: [
             for (final currency in Currency.values) ...[
               Text(
-                '${currency.code} 家庭净值',
+                l10n.familyNetWorthCurrency(currency.code),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               Text(
@@ -370,6 +373,7 @@ class _PreviewStep extends ConsumerWidget {
                     displayCurrency: currency,
                   ),
                   currency,
+                  locale,
                 ),
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
@@ -377,12 +381,24 @@ class _PreviewStep extends ConsumerWidget {
             ],
             if (snapshot.hasData) ...[
               const Divider(),
-              Text('与上次对比（${snapshot.data!.display.code}）'),
+              Text(l10n.compareWithPrevious(snapshot.data!.display.code)),
               Text(
-                '余额变动: ${formatSignedMoney(snapshot.data!.balanceChange, snapshot.data!.display)}',
+                l10n.balanceChange(
+                  formatSignedMoney(
+                    snapshot.data!.balanceChange,
+                    snapshot.data!.display,
+                    locale,
+                  ),
+                ),
               ),
               Text(
-                '汇率变动: ${formatSignedMoney(snapshot.data!.fxChange, snapshot.data!.display)}',
+                l10n.fxChange(
+                  formatSignedMoney(
+                    snapshot.data!.fxChange,
+                    snapshot.data!.display,
+                    locale,
+                  ),
+                ),
               ),
             ],
           ],
