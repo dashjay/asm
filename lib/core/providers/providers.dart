@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/backup/s3_client.dart';
 import '../../data/db/app_database.dart';
 import '../../data/db/connection/connect.dart';
 import '../../data/repositories/repositories.dart';
@@ -30,7 +31,7 @@ final settingsRepositoryProvider = Provider(
   (ref) => SettingsRepository(ref.watch(databaseProvider)),
 );
 final backupRepositoryProvider = Provider(
-  (ref) => BackupRepository(),
+  (ref) => BackupRepository(S3Client()),
 );
 
 final settingsProvider = StreamProvider<AppSetting>(

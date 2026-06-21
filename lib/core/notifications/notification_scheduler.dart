@@ -15,31 +15,39 @@ class NotificationScheduler {
   final SettingsRepository _settingsRepo;
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _available = false;
 
   static const _channelId = 'account_reminders';
 
   Future<void> initialize() async {
     if (kIsWeb || _initialized) return;
-    tz.initializeTimeZones();
-
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
-    await _plugin.initialize(
-      const InitializationSettings(android: android, iOS: ios),
-    );
-
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      final androidPlugin =
-          _plugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-      await androidPlugin?.requestNotificationsPermission();
-    }
-
     _initialized = true;
+
+    try {
+      tz.initializeTimeZones();
+
+      const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const ios = DarwinInitializationSettings();
+      await _plugin.initialize(
+        const InitializationSettings(android: android, iOS: ios),
+      );
+
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final androidPlugin =
+            _plugin.resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+        await androidPlugin?.requestNotificationsPermission();
+      }
+
+      _available = true;
+    } catch (e, st) {
+      debugPrint('Notifications unavailable: $e\n$st');
+      _available = false;
+    }
   }
 
   Future<void> cancelForAccount(int accountId) async {
-    if (kIsWeb) return;
+    if (kIsWeb || !_available) return;
     await initialize();
     await _plugin.cancel(accountId);
   }
@@ -47,6 +55,7 @@ class NotificationScheduler {
   Future<void> rescheduleAll() async {
     if (kIsWeb) return;
     await initialize();
+    if (!_available) return;
     await _plugin.cancelAll();
 
     final settings = await _settingsRepo.get();

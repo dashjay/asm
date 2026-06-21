@@ -166,7 +166,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importBackup => '导入备份';
 
   @override
-  String get s3BackupReserved => 'S3 备份（预留）';
+  String get s3BackupReserved => 'S3 备份';
+
+  @override
+  String get s3Backup => 'S3 备份';
 
   @override
   String get s3Endpoint => 'Endpoint';
@@ -181,13 +184,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get s3SecretKey => 'Secret Key';
 
   @override
+  String get s3Prefix => 'Object Key 前缀';
+
+  @override
   String get saveS3Config => '保存 S3 配置';
 
   @override
   String get s3ConfigSaved => 'S3 配置已保存';
 
   @override
-  String get uploadToS3ComingSoon => '上传到 S3（即将支持）';
+  String get s3Upload => '上传到 S3';
+
+  @override
+  String get s3UploadSuccess => '备份已上传到 S3';
+
+  @override
+  String s3UploadFailed(String error) {
+    return 'S3 上传失败：$error';
+  }
+
+  @override
+  String get s3ConfigIncomplete =>
+      '请填写 Endpoint、Bucket、Access Key 和 Secret Key';
 
   @override
   String get assetTrends => '资产走势';
