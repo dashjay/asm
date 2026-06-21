@@ -166,6 +166,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importBackup => '导入备份';
 
   @override
+  String get importBackupConfirmTitle => '恢复备份？';
+
+  @override
+  String get importBackupConfirmMessage => '将用所选备份文件替换当前所有数据，此操作不可撤销。';
+
+  @override
+  String get importCancelled => '已取消导入';
+
+  @override
+  String importFailed(String error) {
+    return '导入失败：$error';
+  }
+
+  @override
+  String get invalidBackupFile => '所选文件不是有效的 ASM 数据库备份';
+
+  @override
+  String get backupFileUnreadable => '无法读取所选文件，请先保存到本地后再导入';
+
+  @override
   String get s3BackupReserved => 'S3 备份';
 
   @override

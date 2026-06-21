@@ -9,3 +9,9 @@ Future<void> replaceDatabaseFile(String pickedPath, String dest) =>
 
 Future<void> deleteFileIfExists(String path) =>
     throw UnsupportedError('Not supported on web');
+
+Future<bool> isValidSqliteBackupFile(String path) =>
+    throw UnsupportedError('Not supported on web');
+
+Future<String> writeBytesToTempFile(String dir, String name, List<int> bytes) =>
+    throw UnsupportedError('Not supported on web');

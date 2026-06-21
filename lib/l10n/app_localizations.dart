@@ -380,6 +380,42 @@ abstract class AppLocalizations {
   /// **'Import Backup'**
   String get importBackup;
 
+  /// No description provided for @importBackupConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore backup?'**
+  String get importBackupConfirmTitle;
+
+  /// No description provided for @importBackupConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will replace all current data with the selected backup file. This cannot be undone.'**
+  String get importBackupConfirmMessage;
+
+  /// No description provided for @importCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Import cancelled'**
+  String get importCancelled;
+
+  /// No description provided for @importFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed: {error}'**
+  String importFailed(String error);
+
+  /// No description provided for @invalidBackupFile.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected file is not a valid ASM database backup'**
+  String get invalidBackupFile;
+
+  /// No description provided for @backupFileUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the selected file. Try saving it locally first, then import again.'**
+  String get backupFileUnreadable;
+
   /// No description provided for @s3BackupReserved.
   ///
   /// In en, this message translates to:

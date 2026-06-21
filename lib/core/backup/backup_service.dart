@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,11 @@ import 'backup_io.dart' if (dart.library.js_interop) 'backup_stub.dart';
 
 final secureStorageProvider = Provider((_) => const FlutterSecureStorage());
 
+enum ImportDatabaseResult {
+  cancelled,
+  success,
+}
+
 class BackupService {
   BackupService(this._ref);
 
@@ -23,14 +30,14 @@ class BackupService {
     if (kIsWeb) {
       throw UnsupportedError('web_export');
     }
-    return exportDatabaseFile();
+    return exportDatabaseFile(_ref);
   }
 
-  Future<void> importDatabase() async {
+  Future<ImportDatabaseResult> importDatabase() async {
     if (kIsWeb) {
       throw UnsupportedError('web_import');
     }
-    await importDatabaseFile(_ref);
+    return importDatabaseFile(_ref);
   }
 
   Future<void> saveS3Secret(String secret) async {
@@ -60,7 +67,7 @@ class BackupService {
     }
 
     final dir = await getApplicationDocumentsDirectory();
-    final source = await openDatabaseFile(dir.path);
+    final source = await prepareDatabaseForCopy(_ref, dir.path);
     final exportDir = await getTemporaryDirectory();
     final filename = backupFilename(DateTime.now());
     final dest = p.join(exportDir.path, filename);
@@ -100,29 +107,107 @@ String buildObjectKey(String prefix, String filename) {
 
 final backupServiceProvider = Provider((ref) => BackupService(ref));
 
-Future<String> exportDatabaseFile() async {
+Future<String> prepareDatabaseForCopy(Ref ref, String documentsDir) async {
+  final db = ref.read(databaseProvider);
+  await db.customStatement('PRAGMA wal_checkpoint(FULL);');
+  return openDatabaseFile(documentsDir);
+}
+
+Future<String> exportDatabaseFile(Ref ref) async {
   final dir = await getApplicationDocumentsDirectory();
-  final source = await openDatabaseFile(dir.path);
+  final source = await prepareDatabaseForCopy(ref, dir.path);
   final exportDir = await getTemporaryDirectory();
-  final timestamp = DateTime.now().millisecondsSinceEpoch;
-  final dest = p.join(exportDir.path, 'asm_backup_$timestamp.db');
+  final filename = backupFilename(DateTime.now());
+  final dest = p.join(exportDir.path, filename);
   await copyDatabaseFile(source, dest);
   await Share.shareXFiles([XFile(dest)], text: kBackupShareText);
   return dest;
 }
 
-Future<void> importDatabaseFile(Ref ref) async {
+Future<ImportDatabaseResult> importDatabaseFile(Ref ref) async {
   final result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['db'],
+    type: FileType.any,
+    withData: true,
   );
-  if (result == null || result.files.single.path == null) return;
+  if (result == null || result.files.isEmpty) {
+    return ImportDatabaseResult.cancelled;
+  }
 
-  final pickedPath = result.files.single.path!;
-  final dir = await getApplicationDocumentsDirectory();
-  final dest = p.join(dir.path, 'asm.db');
+  final picked = result.files.single;
+  final tempDir = await getTemporaryDirectory();
+  final sourcePath = await _resolvePickedBackupPath(picked, tempDir.path);
+  final tempCopy = p.join(tempDir.path, 'asm_import_${DateTime.now().millisecondsSinceEpoch}.db');
+  var copiedTemp = false;
 
-  await ref.read(databaseProvider).close();
-  await replaceDatabaseFile(pickedPath, dest);
-  ref.invalidate(databaseProvider);
+  try {
+    await copyDatabaseFile(sourcePath, tempCopy);
+    copiedTemp = true;
+
+    if (!await isValidSqliteBackupFile(tempCopy)) {
+      throw StateError('invalid_backup_file');
+    }
+
+    final dir = await getApplicationDocumentsDirectory();
+    final dest = p.join(dir.path, 'asm.db');
+    final rollbackPath = '$dest.bak';
+
+    final db = ref.read(databaseProvider);
+    await db.customStatement('PRAGMA wal_checkpoint(FULL);');
+    await db.close();
+
+    if (await File(dest).exists()) {
+      await copyDatabaseFile(dest, rollbackPath);
+    }
+
+    try {
+      await replaceDatabaseFile(tempCopy, dest);
+      if (!await isValidSqliteBackupFile(dest)) {
+        throw StateError('invalid_backup_file');
+      }
+    } catch (e) {
+      if (await File(rollbackPath).exists()) {
+        await replaceDatabaseFile(rollbackPath, dest);
+      }
+      rethrow;
+    } finally {
+      await deleteFileIfExists(rollbackPath);
+    }
+
+    ref.invalidate(databaseProvider);
+    return ImportDatabaseResult.success;
+  } finally {
+    if (copiedTemp) {
+      await deleteFileIfExists(tempCopy);
+    }
+    if (sourcePath != picked.path) {
+      await deleteFileIfExists(sourcePath);
+    }
+  }
+}
+
+Future<String> _resolvePickedBackupPath(PlatformFile file, String tempDir) async {
+  final path = file.path;
+  if (path != null && path.isNotEmpty) {
+    final pickedFile = File(path);
+    if (await pickedFile.exists() && await pickedFile.length() > 0) {
+      return path;
+    }
+  }
+
+  final bytes = file.bytes;
+  if (bytes != null && bytes.isNotEmpty) {
+    return writeBytesToTempFile(tempDir, file.name, bytes);
+  }
+
+  if (path != null && path.isNotEmpty) {
+    final pickedFile = File(path);
+    if (await pickedFile.exists()) {
+      final fileBytes = await pickedFile.readAsBytes();
+      if (fileBytes.isNotEmpty) {
+        return writeBytesToTempFile(tempDir, file.name, fileBytes);
+      }
+    }
+  }
+
+  throw StateError('backup_file_unreadable');
 }
