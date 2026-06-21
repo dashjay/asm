@@ -238,6 +238,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please fill in endpoint, bucket, access key, and secret key';
 
   @override
+  String get s3NetworkAccessDenied =>
+      'Cannot reach the S3 endpoint. Check network access and allow this app to use Wi‑Fi and mobile data in system settings.';
+
+  @override
+  String get s3InvalidEndpoint =>
+      'Endpoint URL is invalid. Use https://your-account.r2.cloudflarestorage.com';
+
+  @override
   String get assetTrends => 'Asset Trends';
 
   @override

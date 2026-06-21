@@ -111,9 +111,16 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         );
       }
     } on StateError catch (e) {
-      if (e.message == 's3_config_incomplete' && mounted) {
+      if (!mounted) return;
+      final message = switch (e.message) {
+        's3_config_incomplete' => l10n.s3ConfigIncomplete,
+        'network_access_denied' => l10n.s3NetworkAccessDenied,
+        'invalid_endpoint' => l10n.s3InvalidEndpoint,
+        _ => null,
+      };
+      if (message != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.s3ConfigIncomplete)),
+          SnackBar(content: Text(message)),
         );
       }
     } catch (e) {

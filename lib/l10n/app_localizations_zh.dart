@@ -228,6 +228,14 @@ class AppLocalizationsZh extends AppLocalizations {
       '请填写 Endpoint、Bucket、Access Key 和 Secret Key';
 
   @override
+  String get s3NetworkAccessDenied =>
+      '无法连接 S3 Endpoint，请检查网络并在系统设置中允许本应用使用 WLAN 和移动数据。';
+
+  @override
+  String get s3InvalidEndpoint =>
+      'Endpoint 格式无效，请填写类似 https://账号ID.r2.cloudflarestorage.com';
+
+  @override
   String get assetTrends => '资产走势';
 
   @override

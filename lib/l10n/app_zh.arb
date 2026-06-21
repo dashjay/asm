@@ -66,6 +66,8 @@
   "s3UploadSuccess": "备份已上传到 S3",
   "s3UploadFailed": "S3 上传失败：{error}",
   "s3ConfigIncomplete": "请填写 Endpoint、Bucket、Access Key 和 Secret Key",
+  "s3NetworkAccessDenied": "无法连接 S3 Endpoint，请检查网络并在系统设置中允许本应用使用 WLAN 和移动数据。",
+  "s3InvalidEndpoint": "Endpoint 格式无效，请填写类似 https://账号ID.r2.cloudflarestorage.com",
   "assetTrends": "资产走势",
   "familyTotalNetWorth": "家庭总净值",
   "wizardStepFx": "录入汇率",
