@@ -357,6 +357,35 @@ class SessionRepository {
     }).toList();
   }
 
+  /// Latest known balance per active account, used for current net-worth totals.
+  ///
+  /// Unlike [balancesForSession], this spans all update sessions so a
+  /// single-account initial snapshot session cannot hide other accounts.
+  Future<List<AccountBalance>> balancesLatest() async {
+    final snapshots = await (_db.select(_db.balanceSnapshots)
+          ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)]))
+        .get();
+    final latestByAccount = <int, BalanceSnapshot>{};
+    for (final snapshot in snapshots) {
+      latestByAccount.putIfAbsent(snapshot.accountId, () => snapshot);
+    }
+
+    final accounts = await (_db.select(_db.accounts)
+          ..where((t) => t.isArchived.equals(false)))
+        .get();
+
+    return [
+      for (final account in accounts)
+        if (latestByAccount.containsKey(account.id))
+          AccountBalance(
+            accountId: account.id,
+            category: AccountCategory.fromString(account.category),
+            currency: Currency.fromString(account.currency),
+            amount: latestByAccount[account.id]!.amount,
+          ),
+    ];
+  }
+
   /// Computes the family net worth at every recorded session.
   ///
   /// Performance: loads all sessions, snapshots, accounts and FX rates in four
