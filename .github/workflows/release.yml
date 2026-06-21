@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Patch share_plus for built-in Kotlin
+        run: bash tool/patch_share_plus_kotlin.sh
+
       - name: Build release APK
         run: flutter build apk --release
 
