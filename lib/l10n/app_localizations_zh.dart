@@ -242,6 +242,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get familyTotalNetWorth => '家庭总净值';
 
   @override
+  String get viewTrendDetails => '查看细节';
+
+  @override
+  String get trendDetailsTitle => '走势详情';
+
+  @override
+  String get trendFilterHint => '选择家庭成员和/或资产类型，查看对应净值变化。';
+
+  @override
+  String get allMembers => '全部成员';
+
+  @override
+  String get allCategories => '全部类型';
+
+  @override
   String get wizardStepFx => '录入汇率';
 
   @override

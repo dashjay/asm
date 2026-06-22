@@ -399,6 +399,8 @@ class SessionRepository {
   Future<List<({UpdateSession session, double netWorth})>> familyTrend({
     required Currency displayCurrency,
     DateTime? since,
+    int? memberId,
+    AccountCategory? category,
   }) async {
     final allSessions = await (_db.select(_db.updateSessions)
           ..orderBy([(t) => OrderingTerm.asc(t.recordedAt)]))
@@ -461,7 +463,11 @@ class SessionRepository {
 
       final balances = [
         for (final account in accounts)
-          if (!account.isArchived && latestByAccount.containsKey(account.id))
+          if (!account.isArchived &&
+              latestByAccount.containsKey(account.id) &&
+              (memberId == null || account.memberId == memberId) &&
+              (category == null ||
+                  AccountCategory.fromString(account.category) == category))
             AccountBalance(
               accountId: account.id,
               category: AccountCategory.fromString(account.category),
@@ -494,10 +500,22 @@ class SessionRepository {
   Stream<List<({UpdateSession session, double netWorth})>> watchFamilyTrend({
     required Currency displayCurrency,
     DateTime? since,
+    int? memberId,
+    AccountCategory? category,
   }) async* {
-    yield await familyTrend(displayCurrency: displayCurrency, since: since);
+    yield await familyTrend(
+      displayCurrency: displayCurrency,
+      since: since,
+      memberId: memberId,
+      category: category,
+    );
     await for (final _ in _db.dashboardChanges()) {
-      yield await familyTrend(displayCurrency: displayCurrency, since: since);
+      yield await familyTrend(
+        displayCurrency: displayCurrency,
+        since: since,
+        memberId: memberId,
+        category: category,
+      );
     }
   }
 }

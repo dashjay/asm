@@ -252,6 +252,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get familyTotalNetWorth => 'Family Total Net Worth';
 
   @override
+  String get viewTrendDetails => 'View Details';
+
+  @override
+  String get trendDetailsTitle => 'Trend Details';
+
+  @override
+  String get trendFilterHint =>
+      'Pick a member and/or asset type to view that portion of net worth.';
+
+  @override
+  String get allMembers => 'All members';
+
+  @override
+  String get allCategories => 'All types';
+
+  @override
   String get wizardStepFx => 'Enter FX Rates';
 
   @override

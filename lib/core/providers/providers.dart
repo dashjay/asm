@@ -95,16 +95,26 @@ final latestSessionProvider = StreamProvider<UpdateSession?>((ref) {
   return _watchDashboard(db, repo.latest);
 });
 
+/// Parameters for [familyTrendProvider]: the visible time window plus optional
+/// filters by family member and asset category. A `null` filter means "all".
+typedef TrendQuery = ({
+  ChartRange range,
+  int? memberId,
+  AccountCategory? category,
+});
+
 final familyTrendProvider = StreamProvider.family<
-    List<({UpdateSession session, double netWorth})>, ChartRange>(
-  (ref, range) {
+    List<({UpdateSession session, double netWorth})>, TrendQuery>(
+  (ref, query) {
     final display = ref.watch(displayCurrencyProvider);
-    final since = range.duration != null
-        ? DateTime.now().subtract(range.duration!)
+    final since = query.range.duration != null
+        ? DateTime.now().subtract(query.range.duration!)
         : null;
     return ref.watch(sessionRepositoryProvider).watchFamilyTrend(
           displayCurrency: display,
           since: since,
+          memberId: query.memberId,
+          category: query.category,
         );
   },
 );

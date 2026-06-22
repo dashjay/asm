@@ -115,4 +115,53 @@ void main() {
     expect(trend, hasLength(1));
     expect(trend.single.netWorth, 1_300_000);
   });
+
+  test('familyTrend filters by member and category', () async {
+    final kevinId = await memberRepo.create('Kevin');
+    final aliceId = await memberRepo.create('Alice');
+
+    await accountRepo.create(
+      memberId: kevinId,
+      name: 'Kevin Savings',
+      category: AccountCategory.current,
+      currency: Currency.cny,
+      initialBalance: 100_000,
+    );
+    await accountRepo.create(
+      memberId: kevinId,
+      name: 'Kevin Brokerage',
+      category: AccountCategory.investment,
+      currency: Currency.cny,
+      initialBalance: 300_000,
+    );
+    await accountRepo.create(
+      memberId: aliceId,
+      name: 'Alice Brokerage',
+      category: AccountCategory.investment,
+      currency: Currency.cny,
+      initialBalance: 700_000,
+    );
+
+    final all = await sessionRepo.familyTrend(displayCurrency: Currency.cny);
+    expect(all.single.netWorth, 1_100_000);
+
+    final kevinOnly = await sessionRepo.familyTrend(
+      displayCurrency: Currency.cny,
+      memberId: kevinId,
+    );
+    expect(kevinOnly.single.netWorth, 400_000);
+
+    final investmentOnly = await sessionRepo.familyTrend(
+      displayCurrency: Currency.cny,
+      category: AccountCategory.investment,
+    );
+    expect(investmentOnly.single.netWorth, 1_000_000);
+
+    final kevinInvestment = await sessionRepo.familyTrend(
+      displayCurrency: Currency.cny,
+      memberId: kevinId,
+      category: AccountCategory.investment,
+    );
+    expect(kevinInvestment.single.netWorth, 300_000);
+  });
 }
