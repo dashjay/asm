@@ -61,6 +61,65 @@ void main() {
     expect(netWorth, 800_000);
   });
 
+  test(
+      'balancesAsOfSession keeps earlier accounts when a new account is added '
+      'in its own session', () async {
+    final memberId = await memberRepo.create('Test');
+    await accountRepo.create(
+      memberId: memberId,
+      name: 'Savings',
+      category: AccountCategory.current,
+      currency: Currency.cny,
+      initialBalance: 1_000_000,
+    );
+
+    // Adding a second account creates its own single-account session, the same
+    // way the UI does when an account is created with an opening balance.
+    await accountRepo.create(
+      memberId: memberId,
+      name: 'SGD Pocket',
+      category: AccountCategory.current,
+      currency: Currency.sgd,
+      initialBalance: 700,
+    );
+
+    // Two single-account sessions exist; the first one (smallest id) is the
+    // "previous" session the home delta compares against.
+    final sessions = await sessionRepo.watchAll().first;
+    expect(sessions, hasLength(2));
+    final previous = sessions.reduce((a, b) => a.id < b.id ? a : b);
+
+    // The previous session itself only snapshotted the first account...
+    final sessionBalances =
+        await sessionRepo.balancesForSession(previous.id);
+    expect(sessionBalances, hasLength(1));
+
+    // ...but the cumulative view as of that session still sees it, so the
+    // "change since last" delta is only the new account's converted value
+    // rather than the entire family total.
+    final prevCumulative = await sessionRepo.balancesAsOfSession(previous);
+    expect(prevCumulative, hasLength(1));
+
+    final converter = await fxRepo.latestConverter();
+    final currentNet = NetWorthCalculator.familyNetWorth(
+      balances: await sessionRepo.balancesLatest(),
+      converter: converter,
+      displayCurrency: Currency.cny,
+    );
+    final prevNet = NetWorthCalculator.familyNetWorth(
+      balances: prevCumulative,
+      converter: converter,
+      displayCurrency: Currency.cny,
+    );
+    final newAccountInCny = converter.convert(
+      amount: 700,
+      from: Currency.sgd,
+      to: Currency.cny,
+    );
+
+    expect(currentNet - prevNet, closeTo(newAccountInCny, 0.01));
+  });
+
   test('balancesLatest excludes archived accounts', () async {
     final memberId = await memberRepo.create('Test');
     final activeId = await accountRepo.create(

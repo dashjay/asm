@@ -416,7 +416,7 @@ class _PreviewStep extends ConsumerWidget {
     final latest = await sessionRepo.latest();
     if (latest == null) return null;
 
-    final prevBalances = await sessionRepo.balancesForSession(latest.id);
+    final prevBalances = await sessionRepo.balancesAsOfSession(latest);
     final prevFx = await fxRepo.converterForSnapshot(latest.fxSnapshotId);
     final attr = NetWorthCalculator.attributeChange(
       previousBalances: prevBalances,

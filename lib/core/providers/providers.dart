@@ -201,7 +201,7 @@ Future<HomeSummary> _computeHomeSummary({
   };
   final previous = await sessionRepo.previous(latest);
   if (previous != null) {
-    final prevBalances = await sessionRepo.balancesForSession(previous.id);
+    final prevBalances = await sessionRepo.balancesAsOfSession(previous);
     final prevConverter =
         await fxRepo.converterForSnapshot(previous.fxSnapshotId);
     for (final c in Currency.values) {
