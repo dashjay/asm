@@ -1,7 +1,7 @@
 name: asm
 description: Family asset management with multi-currency snapshot tracking.
 publish_to: 'none'
-version: 1.0.4+4
+version: 1.0.5+5
 
 environment:
   sdk: ^3.12.2
