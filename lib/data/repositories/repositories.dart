@@ -386,6 +386,60 @@ class SessionRepository {
     ];
   }
 
+  /// Cumulative latest balance per active account as of [session] (inclusive).
+  ///
+  /// Walks every snapshot recorded in [session] or an earlier session and keeps
+  /// the most recent value per account, mirroring the running total in
+  /// [familyTrend]. Unlike [balancesForSession] this is symmetric with
+  /// [balancesLatest], so comparing the latest total against an earlier session
+  /// (e.g. the home "change since last" delta) no longer treats accounts that
+  /// were not part of that one session as if they had a zero balance. Adding a
+  /// brand-new account in its own single-account session therefore reports a
+  /// delta of just that account's value instead of the whole family total.
+  Future<List<AccountBalance>> balancesAsOfSession(UpdateSession session) async {
+    final sessions = await (_db.select(_db.updateSessions)
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.recordedAt),
+            (t) => OrderingTerm.asc(t.id),
+          ]))
+        .get();
+
+    final allSnapshots = await _db.select(_db.balanceSnapshots).get();
+    final snapshotsBySession = <int, List<BalanceSnapshot>>{};
+    for (final snapshot in allSnapshots) {
+      snapshotsBySession
+          .putIfAbsent(snapshot.updateSessionId, () => [])
+          .add(snapshot);
+    }
+
+    final accounts = await (_db.select(_db.accounts)
+          ..where((t) => t.isArchived.equals(false)))
+        .get();
+    final accountMap = {for (final a in accounts) a.id: a};
+
+    final latestByAccount = <int, BalanceSnapshot>{};
+    for (final s in sessions) {
+      for (final snapshot
+          in snapshotsBySession[s.id] ?? const <BalanceSnapshot>[]) {
+        if (accountMap.containsKey(snapshot.accountId)) {
+          latestByAccount[snapshot.accountId] = snapshot;
+        }
+      }
+      if (s.id == session.id) break;
+    }
+
+    return [
+      for (final account in accounts)
+        if (latestByAccount.containsKey(account.id))
+          AccountBalance(
+            accountId: account.id,
+            category: AccountCategory.fromString(account.category),
+            currency: Currency.fromString(account.currency),
+            amount: latestByAccount[account.id]!.amount,
+          ),
+    ];
+  }
+
   /// Computes the family net worth trend, emitting at most one point per
   /// calendar day (the last session of that day).
   ///
