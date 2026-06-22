@@ -7,6 +7,7 @@ import '../../data/repositories/repositories.dart';
 import '../../domain/currency/currency_converter.dart';
 import '../../domain/forecast/linear_forecast.dart';
 import '../../domain/models/enums.dart';
+import '../../domain/models/trend_filter.dart';
 import '../../domain/net_worth_calculator.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -95,12 +96,12 @@ final latestSessionProvider = StreamProvider<UpdateSession?>((ref) {
   return _watchDashboard(db, repo.latest);
 });
 
-/// Parameters for [familyTrendProvider]: the visible time window plus optional
-/// filters by family member and asset category. A `null` filter means "all".
+/// Parameters for [familyTrendProvider]: the visible time window plus an
+/// optional multi-select [TrendFilter] by family members and asset categories.
+/// An empty filter means "all".
 typedef TrendQuery = ({
   ChartRange range,
-  int? memberId,
-  AccountCategory? category,
+  TrendFilter filter,
 });
 
 final familyTrendProvider = StreamProvider.family<
@@ -113,8 +114,8 @@ final familyTrendProvider = StreamProvider.family<
     return ref.watch(sessionRepositoryProvider).watchFamilyTrend(
           displayCurrency: display,
           since: since,
-          memberId: query.memberId,
-          category: query.category,
+          memberIds: query.filter.memberIds,
+          categories: query.filter.categories,
         );
   },
 );

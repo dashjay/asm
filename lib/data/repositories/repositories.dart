@@ -450,11 +450,13 @@ class SessionRepository {
   /// Performance: loads all sessions, snapshots, accounts and FX rates in four
   /// queries and joins them in memory, rather than issuing several queries per
   /// session (the previous O(sessions) query storm).
+  /// [memberIds] and [categories] are optional multi-select filters. An empty
+  /// set means "all" for that dimension; the two combine with AND.
   Future<List<({UpdateSession session, double netWorth})>> familyTrend({
     required Currency displayCurrency,
     DateTime? since,
-    int? memberId,
-    AccountCategory? category,
+    Set<int> memberIds = const {},
+    Set<AccountCategory> categories = const {},
   }) async {
     final allSessions = await (_db.select(_db.updateSessions)
           ..orderBy([(t) => OrderingTerm.asc(t.recordedAt)]))
@@ -519,9 +521,10 @@ class SessionRepository {
         for (final account in accounts)
           if (!account.isArchived &&
               latestByAccount.containsKey(account.id) &&
-              (memberId == null || account.memberId == memberId) &&
-              (category == null ||
-                  AccountCategory.fromString(account.category) == category))
+              (memberIds.isEmpty || memberIds.contains(account.memberId)) &&
+              (categories.isEmpty ||
+                  categories.contains(
+                      AccountCategory.fromString(account.category))))
             AccountBalance(
               accountId: account.id,
               category: AccountCategory.fromString(account.category),
@@ -554,21 +557,21 @@ class SessionRepository {
   Stream<List<({UpdateSession session, double netWorth})>> watchFamilyTrend({
     required Currency displayCurrency,
     DateTime? since,
-    int? memberId,
-    AccountCategory? category,
+    Set<int> memberIds = const {},
+    Set<AccountCategory> categories = const {},
   }) async* {
     yield await familyTrend(
       displayCurrency: displayCurrency,
       since: since,
-      memberId: memberId,
-      category: category,
+      memberIds: memberIds,
+      categories: categories,
     );
     await for (final _ in _db.dashboardChanges()) {
       yield await familyTrend(
         displayCurrency: displayCurrency,
         since: since,
-        memberId: memberId,
-        category: category,
+        memberIds: memberIds,
+        categories: categories,
       );
     }
   }

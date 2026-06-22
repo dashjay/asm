@@ -533,7 +533,7 @@ abstract class AppLocalizations {
   /// No description provided for @trendFilterHint.
   ///
   /// In en, this message translates to:
-  /// **'Pick a member and/or asset type to view that portion of net worth.'**
+  /// **'Select one or more members and asset types to view their combined net worth.'**
   String get trendFilterHint;
 
   /// No description provided for @allMembers.

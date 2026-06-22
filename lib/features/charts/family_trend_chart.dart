@@ -8,6 +8,7 @@ import 'chart_axis.dart';
 import 'line_chart_touch.dart';
 import '../../domain/forecast/linear_forecast.dart';
 import '../../domain/models/enums.dart';
+import '../../domain/models/trend_filter.dart';
 import '../../l10n/app_localizations.dart';
 
 class FamilyTrendChart extends ConsumerStatefulWidget {
@@ -17,8 +18,7 @@ class FamilyTrendChart extends ConsumerStatefulWidget {
     this.range = ChartRange.all,
     this.showForecast = false,
     this.compact = false,
-    this.memberId,
-    this.category,
+    this.filter = const TrendFilter(),
   });
 
   final Currency displayCurrency;
@@ -26,11 +26,9 @@ class FamilyTrendChart extends ConsumerStatefulWidget {
   final bool showForecast;
   final bool compact;
 
-  /// Restrict the trend to a single family member's accounts. `null` = all.
-  final int? memberId;
-
-  /// Restrict the trend to a single asset category. `null` = all.
-  final AccountCategory? category;
+  /// Restrict the trend to the selected family members and/or asset categories.
+  /// An empty filter (the default) shows the whole family.
+  final TrendFilter filter;
 
   @override
   ConsumerState<FamilyTrendChart> createState() => _FamilyTrendChartState();
@@ -51,8 +49,7 @@ class _FamilyTrendChartState extends ConsumerState<FamilyTrendChart> {
     final locale = Localizations.localeOf(context).languageCode;
     final trendAsync = ref.watch(familyTrendProvider((
       range: _range,
-      memberId: widget.memberId,
-      category: widget.category,
+      filter: widget.filter,
     )));
 
     return trendAsync.when(
