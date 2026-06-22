@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/providers/providers.dart';
 import '../../domain/models/enums.dart';
@@ -23,26 +24,39 @@ class ChartsPage extends ConsumerWidget {
           final display = Currency.fromString(settings.displayCurrency);
           return Padding(
             padding: const EdgeInsets.all(16),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.familyTotalNetWorth,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: FamilyTrendChart(
-                        displayCurrency: display,
-                        showForecast: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.familyTotalNetWorth,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: FamilyTrendChart(
+                              displayCurrency: display,
+                              showForecast: true,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  onPressed: () => context.push('/charts/detail'),
+                  icon: const Icon(Icons.tune),
+                  label: Text(l10n.viewTrendDetails),
+                ),
+              ],
             ),
           );
         },

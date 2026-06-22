@@ -17,12 +17,20 @@ class FamilyTrendChart extends ConsumerStatefulWidget {
     this.range = ChartRange.all,
     this.showForecast = false,
     this.compact = false,
+    this.memberId,
+    this.category,
   });
 
   final Currency displayCurrency;
   final ChartRange range;
   final bool showForecast;
   final bool compact;
+
+  /// Restrict the trend to a single family member's accounts. `null` = all.
+  final int? memberId;
+
+  /// Restrict the trend to a single asset category. `null` = all.
+  final AccountCategory? category;
 
   @override
   ConsumerState<FamilyTrendChart> createState() => _FamilyTrendChartState();
@@ -41,7 +49,11 @@ class _FamilyTrendChartState extends ConsumerState<FamilyTrendChart> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).languageCode;
-    final trendAsync = ref.watch(familyTrendProvider(_range));
+    final trendAsync = ref.watch(familyTrendProvider((
+      range: _range,
+      memberId: widget.memberId,
+      category: widget.category,
+    )));
 
     return trendAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),

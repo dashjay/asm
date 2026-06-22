@@ -5,6 +5,7 @@ import '../../features/accounts/account_detail_page.dart';
 import '../../features/accounts/account_form_page.dart';
 import '../../features/accounts/accounts_page.dart';
 import '../../features/charts/charts_page.dart';
+import '../../features/charts/trend_detail_page.dart';
 import '../../features/fx/fx_history_page.dart';
 import '../../features/home/home_page.dart';
 import '../../features/members/members_page.dart';
@@ -59,6 +60,13 @@ GoRouter createRouter() {
             path: '/charts',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: ChartsPage()),
+            routes: [
+              GoRoute(
+                path: 'detail',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => const TrendDetailPage(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/fx',

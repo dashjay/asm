@@ -518,6 +518,36 @@ abstract class AppLocalizations {
   /// **'Family Total Net Worth'**
   String get familyTotalNetWorth;
 
+  /// No description provided for @viewTrendDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View Details'**
+  String get viewTrendDetails;
+
+  /// No description provided for @trendDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trend Details'**
+  String get trendDetailsTitle;
+
+  /// No description provided for @trendFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a member and/or asset type to view that portion of net worth.'**
+  String get trendFilterHint;
+
+  /// No description provided for @allMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'All members'**
+  String get allMembers;
+
+  /// No description provided for @allCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'All types'**
+  String get allCategories;
+
   /// No description provided for @wizardStepFx.
   ///
   /// In en, this message translates to:
