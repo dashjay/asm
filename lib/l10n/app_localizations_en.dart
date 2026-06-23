@@ -283,7 +283,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trendFilterHint =>
-      'Pick a member and/or asset type to view that portion of net worth.';
+      'Select one or more members and asset types to view their combined net worth.';
 
   @override
   String get allMembers => 'All members';
@@ -302,6 +302,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enterValidFxRates => 'Please enter valid exchange rates';
+
+  @override
+  String get fetchingFxRates => 'Fetching latest rates…';
+
+  @override
+  String get fxRatesAutoFilled => 'Auto-filled with the latest rates';
+
+  @override
+  String get fxFetchFailed =>
+      'Couldn\'t fetch rates automatically. Please enter them manually below.';
+
+  @override
+  String get fetchLatestFxRates => 'Get latest rates';
+
+  @override
+  String get retry => 'Retry';
 
   @override
   String get confirmSubmit => 'Confirm';

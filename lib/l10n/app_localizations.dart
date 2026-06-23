@@ -575,7 +575,7 @@ abstract class AppLocalizations {
   /// No description provided for @trendFilterHint.
   ///
   /// In en, this message translates to:
-  /// **'Pick a member and/or asset type to view that portion of net worth.'**
+  /// **'Select one or more members and asset types to view their combined net worth.'**
   String get trendFilterHint;
 
   /// No description provided for @allMembers.
@@ -613,6 +613,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please enter valid exchange rates'**
   String get enterValidFxRates;
+
+  /// No description provided for @fetchingFxRates.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching latest rates…'**
+  String get fetchingFxRates;
+
+  /// No description provided for @fxRatesAutoFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-filled with the latest rates'**
+  String get fxRatesAutoFilled;
+
+  /// No description provided for @fxFetchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t fetch rates automatically. Please enter them manually below.'**
+  String get fxFetchFailed;
+
+  /// No description provided for @fetchLatestFxRates.
+  ///
+  /// In en, this message translates to:
+  /// **'Get latest rates'**
+  String get fetchLatestFxRates;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
 
   /// No description provided for @confirmSubmit.
   ///

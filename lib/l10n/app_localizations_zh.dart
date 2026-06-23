@@ -269,7 +269,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get trendDetailsTitle => '走势详情';
 
   @override
-  String get trendFilterHint => '选择家庭成员和/或资产类型，查看对应净值变化。';
+  String get trendFilterHint => '可多选家庭成员和资产类型，合并查看对应净值变化。';
 
   @override
   String get allMembers => '全部成员';
@@ -288,6 +288,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get enterValidFxRates => '请输入有效汇率';
+
+  @override
+  String get fetchingFxRates => '正在获取最新汇率…';
+
+  @override
+  String get fxRatesAutoFilled => '已自动填入最新汇率';
+
+  @override
+  String get fxFetchFailed => '无法自动获取汇率，请在下方手动输入。';
+
+  @override
+  String get fetchLatestFxRates => '获取最新汇率';
+
+  @override
+  String get retry => '重试';
 
   @override
   String get confirmSubmit => '确认提交';
