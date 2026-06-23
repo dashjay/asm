@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/backup/s3_client.dart';
 import '../../data/db/app_database.dart';
+import '../../data/fx/fx_rate_service.dart';
 import '../../data/db/connection/connect.dart';
 import '../../data/repositories/repositories.dart';
 import '../../domain/currency/currency_converter.dart';
@@ -34,6 +35,7 @@ final settingsRepositoryProvider = Provider(
 final backupRepositoryProvider = Provider(
   (ref) => BackupRepository(S3Client()),
 );
+final fxRateServiceProvider = Provider((ref) => FxRateService());
 
 final settingsProvider = StreamProvider<AppSetting>(
   (ref) => ref.watch(settingsRepositoryProvider).watch(),
