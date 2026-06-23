@@ -206,21 +206,42 @@ void main() {
 
     final kevinOnly = await sessionRepo.familyTrend(
       displayCurrency: Currency.cny,
-      memberId: kevinId,
+      memberIds: {kevinId},
     );
     expect(kevinOnly.single.netWorth, 400_000);
 
     final investmentOnly = await sessionRepo.familyTrend(
       displayCurrency: Currency.cny,
-      category: AccountCategory.investment,
+      categories: {AccountCategory.investment},
     );
     expect(investmentOnly.single.netWorth, 1_000_000);
 
     final kevinInvestment = await sessionRepo.familyTrend(
       displayCurrency: Currency.cny,
-      memberId: kevinId,
-      category: AccountCategory.investment,
+      memberIds: {kevinId},
+      categories: {AccountCategory.investment},
     );
     expect(kevinInvestment.single.netWorth, 300_000);
+
+    // Multi-select: both members, both asset categories.
+    final bothMembers = await sessionRepo.familyTrend(
+      displayCurrency: Currency.cny,
+      memberIds: {kevinId, aliceId},
+    );
+    expect(bothMembers.single.netWorth, 1_100_000);
+
+    final currentAndInvestment = await sessionRepo.familyTrend(
+      displayCurrency: Currency.cny,
+      categories: {AccountCategory.current, AccountCategory.investment},
+    );
+    expect(currentAndInvestment.single.netWorth, 1_100_000);
+
+    // Multi-member combined with a single category.
+    final allInvestments = await sessionRepo.familyTrend(
+      displayCurrency: Currency.cny,
+      memberIds: {kevinId, aliceId},
+      categories: {AccountCategory.investment},
+    );
+    expect(allInvestments.single.netWorth, 1_000_000);
   });
 }

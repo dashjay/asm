@@ -248,7 +248,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get trendDetailsTitle => '走势详情';
 
   @override
-  String get trendFilterHint => '选择家庭成员和/或资产类型，查看对应净值变化。';
+  String get trendFilterHint => '可多选家庭成员和资产类型，合并查看对应净值变化。';
 
   @override
   String get allMembers => '全部成员';

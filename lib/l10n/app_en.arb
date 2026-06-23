@@ -122,7 +122,7 @@
   "familyTotalNetWorth": "Family Total Net Worth",
   "viewTrendDetails": "View Details",
   "trendDetailsTitle": "Trend Details",
-  "trendFilterHint": "Pick a member and/or asset type to view that portion of net worth.",
+  "trendFilterHint": "Select one or more members and asset types to view their combined net worth.",
   "allMembers": "All members",
   "allCategories": "All types",
   "wizardStepFx": "Enter FX Rates",

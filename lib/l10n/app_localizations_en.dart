@@ -259,7 +259,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trendFilterHint =>
-      'Pick a member and/or asset type to view that portion of net worth.';
+      'Select one or more members and asset types to view their combined net worth.';
 
   @override
   String get allMembers => 'All members';
