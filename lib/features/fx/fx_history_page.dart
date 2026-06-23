@@ -9,6 +9,27 @@ import '../../domain/models/enums.dart';
 import '../charts/line_chart_touch.dart';
 import '../../l10n/app_localizations.dart';
 
+/// `USD -> X` rates recorded at one point in time, keyed by [Currency].
+typedef _RatePoint = ({DateTime date, Map<Currency, double> usdRates});
+
+/// Distinct line colors for the non-USD currencies, applied in enum order.
+const List<Color> _seriesColors = [
+  Colors.red,
+  Colors.blue,
+  Colors.green,
+  Colors.orange,
+  Colors.purple,
+  Colors.teal,
+  Colors.brown,
+  Colors.pink,
+  Colors.indigo,
+];
+
+List<Currency> get _trackedCurrencies =>
+    Currency.values.where((c) => c != Currency.usd).toList();
+
+Color _colorFor(int index) => _seriesColors[index % _seriesColors.length];
+
 class FxHistoryPage extends ConsumerWidget {
   const FxHistoryPage({super.key});
 
@@ -28,23 +49,35 @@ class FxHistoryPage extends ConsumerWidget {
             return Center(child: Text(l10n.noFxRecords));
           }
 
-          return FutureBuilder<List<({DateTime date, double cny, double sgd})>>(
+          return FutureBuilder<List<_RatePoint>>(
             future: _loadRates(ref, snapshots.cast<FxSnapshot>()),
             builder: (context, rateSnap) {
               if (!rateSnap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final rates = rateSnap.data!;
-              final cnySpots = rates
-                  .asMap()
-                  .entries
-                  .map((e) => FlSpot(e.key.toDouble(), e.value.cny))
-                  .toList();
-              final sgdSpots = rates
-                  .asMap()
-                  .entries
-                  .map((e) => FlSpot(e.key.toDouble(), e.value.sgd))
-                  .toList();
+              final points = rateSnap.data!;
+              final currencies = _trackedCurrencies;
+
+              final lineBars = <LineChartBarData>[];
+              for (var i = 0; i < currencies.length; i++) {
+                final currency = currencies[i];
+                final spots = points
+                    .asMap()
+                    .entries
+                    .where((e) => e.value.usdRates.containsKey(currency))
+                    .map((e) =>
+                        FlSpot(e.key.toDouble(), e.value.usdRates[currency]!))
+                    .toList();
+                if (spots.isEmpty) continue;
+                lineBars.add(
+                  LineChartBarData(
+                    spots: spots,
+                    color: _colorFor(i),
+                    barWidth: 2,
+                    dotData: const FlDotData(show: true),
+                  ),
+                );
+              }
 
               return ListView(
                 padding: const EdgeInsets.all(16),
@@ -61,20 +94,7 @@ class FxHistoryPage extends ConsumerWidget {
                               formatValue: (y) => y.toStringAsFixed(4),
                               tooltipBarIndex: null,
                             ),
-                            lineBarsData: [
-                              LineChartBarData(
-                                spots: cnySpots,
-                                color: Colors.red,
-                                barWidth: 2,
-                                dotData: const FlDotData(show: true),
-                              ),
-                              LineChartBarData(
-                                spots: sgdSpots,
-                                color: Colors.blue,
-                                barWidth: 2,
-                                dotData: const FlDotData(show: true),
-                              ),
-                            ],
+                            lineBarsData: lineBars,
                             titlesData: const FlTitlesData(show: false),
                           ),
                         ),
@@ -82,11 +102,15 @@ class FxHistoryPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Row(
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
                     children: [
-                      _Legend(color: Colors.red, label: 'USD/CNY'),
-                      SizedBox(width: 16),
-                      _Legend(color: Colors.blue, label: 'USD/SGD'),
+                      for (var i = 0; i < currencies.length; i++)
+                        _Legend(
+                          color: _colorFor(i),
+                          label: 'USD/${currencies[i].code}',
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -97,25 +121,16 @@ class FxHistoryPage extends ConsumerWidget {
                           .ratesForSnapshot(snap.id),
                       builder: (context, s) {
                         final rows = s.data ?? <FxRate>[];
-                        final cny = rows
-                            .where((r) =>
-                                r.fromCurrency == Currency.usd.name &&
-                                r.toCurrency == Currency.cny.name)
-                            .map((r) => r.rate)
-                            .firstOrNull;
-                        final sgd = rows
-                            .where((r) =>
-                                r.fromCurrency == Currency.usd.name &&
-                                r.toCurrency == Currency.sgd.name)
-                            .map((r) => r.rate)
-                            .firstOrNull;
+                        final byCurrency = _usdRatesFromRows(rows);
+                        final subtitle = _trackedCurrencies
+                            .where(byCurrency.containsKey)
+                            .map((c) =>
+                                'USD/${c.code}: ${byCurrency[c]!.toStringAsFixed(4)}')
+                            .join(' · ');
                         return Card(
                           child: ListTile(
                             title: Text(formatDateTime(snap.recordedAt, locale)),
-                            subtitle: Text(
-                              'USD/CNY: ${cny?.toStringAsFixed(4) ?? '-'} · '
-                              'USD/SGD: ${sgd?.toStringAsFixed(4) ?? '-'}',
-                            ),
+                            subtitle: Text(subtitle),
                             trailing: snap.sourceNote.isNotEmpty
                                 ? Text(snap.sourceNote,
                                     style:
@@ -136,32 +151,32 @@ class FxHistoryPage extends ConsumerWidget {
     );
   }
 
-  Future<List<({DateTime date, double cny, double sgd})>> _loadRates(
+  Future<List<_RatePoint>> _loadRates(
     WidgetRef ref,
     List<FxSnapshot> snapshots,
   ) async {
     final fxRepo = ref.read(fxRepositoryProvider);
-    final result = <({DateTime date, double cny, double sgd})>[];
+    final result = <_RatePoint>[];
     for (final snap in snapshots.reversed) {
-      final rates = await fxRepo.ratesForSnapshot(snap.id);
-      final cny = rates
-          .firstWhere(
-            (r) =>
-                r.fromCurrency == Currency.usd.name &&
-                r.toCurrency == Currency.cny.name,
-          )
-          .rate;
-      final sgd = rates
-          .firstWhere(
-            (r) =>
-                r.fromCurrency == Currency.usd.name &&
-                r.toCurrency == Currency.sgd.name,
-          )
-          .rate;
-      result.add((date: snap.recordedAt, cny: cny, sgd: sgd));
+      final rows = await fxRepo.ratesForSnapshot(snap.id);
+      result.add((date: snap.recordedAt, usdRates: _usdRatesFromRows(rows)));
     }
     return result;
   }
+}
+
+/// Extracts the `USD -> X` rate per supported currency from stored rate rows.
+Map<Currency, double> _usdRatesFromRows(List<FxRate> rows) {
+  final result = <Currency, double>{};
+  for (final row in rows) {
+    if (row.fromCurrency != Currency.usd.name) continue;
+    final target =
+        Currency.values.where((c) => c.name == row.toCurrency).firstOrNull;
+    if (target != null && target != Currency.usd) {
+      result[target] = row.rate;
+    }
+  }
+  return result;
 }
 
 class _Legend extends StatelessWidget {

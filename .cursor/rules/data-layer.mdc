@@ -26,7 +26,7 @@ for (final s in snaps) { byAccount.putIfAbsent(s.accountId, () => s); }
 
 ## FX snapshots
 
-Never hand-roll FX snapshot inserts. Use the single source of truth `AppDatabase.insertFxSnapshot(...)` (or `FxRepository.insertSnapshot`), which writes the snapshot plus its USD->CNY / USD->SGD rate rows and falls back to `kDefaultUsdToCny` / `kDefaultUsdToSgd`.
+Never hand-roll FX snapshot inserts. Use the single source of truth `AppDatabase.insertFxSnapshot(...)` (or `FxRepository.insertSnapshot`), which writes the snapshot plus one `USD -> X` rate row per supported currency and falls back to `defaultUsdRate(currency)` for any currency omitted from the `usdRates` map.
 
 ## Reactivity
 

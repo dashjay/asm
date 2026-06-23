@@ -668,17 +668,11 @@ abstract class AppLocalizations {
   /// **'FX Snapshot'**
   String get fxSnapshot;
 
-  /// No description provided for @usdToCnyLabel.
+  /// No description provided for @usdToCurrencyLabel.
   ///
   /// In en, this message translates to:
-  /// **'1 USD = ? CNY'**
-  String get usdToCnyLabel;
-
-  /// No description provided for @usdToSgdLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'1 USD = ? SGD'**
-  String get usdToSgdLabel;
+  /// **'1 USD = ? {currency}'**
+  String usdToCurrencyLabel(String currency);
 
   /// No description provided for @sourceNoteLabel.
   ///

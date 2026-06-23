@@ -6,48 +6,59 @@ import 'fx_defaults.dart';
 /// Rates are keyed by `"from_to"`, e.g. `"usd_cny" => 7.25` means 1 USD = 7.25
 /// CNY. The converter is immutable: it represents the rates at a single point
 /// in time so historical calculations stay reproducible.
+///
+/// USD is the pivot currency. We only ever capture/persist `USD -> X` rates and
+/// derive the full cross-rate matrix from them, so adding a currency never
+/// changes the conversion logic.
 class CurrencyConverter {
   CurrencyConverter(this._rates);
 
   final Map<String, double> _rates;
 
-  /// Builds a fully-populated converter from the two rates we actually capture
-  /// (USD->CNY and USD->SGD), deriving every other direction from them.
-  factory CurrencyConverter.fromUsdRates({
-    required double usdToCny,
-    required double usdToSgd,
-  }) {
-    return CurrencyConverter({
-      'usd_cny': usdToCny,
-      'usd_sgd': usdToSgd,
-      'cny_usd': 1 / usdToCny,
-      'sgd_usd': 1 / usdToSgd,
-      'cny_sgd': usdToSgd / usdToCny,
-      'sgd_cny': usdToCny / usdToSgd,
-    });
+  /// Builds a fully-populated converter from `USD -> X` rates.
+  ///
+  /// [usdRates] maps each non-USD [Currency] to "units of that currency per 1
+  /// USD" (e.g. `{Currency.cny: 7.25}`). USD is implied with a rate of 1. Every
+  /// cross rate is derived through USD so the matrix is always complete.
+  factory CurrencyConverter.fromUsdRates(Map<Currency, double> usdRates) {
+    // Anchor USD at 1 so the double loop below also yields the USD pairs.
+    final perUsd = <Currency, double>{Currency.usd: 1.0, ...usdRates};
+
+    final map = <String, double>{};
+    for (final from in perUsd.keys) {
+      for (final to in perUsd.keys) {
+        if (from == to) continue;
+        // 1 `from` = (1 / perUsd[from]) USD = perUsd[to] / perUsd[from] `to`.
+        map['${from.name}_${to.name}'] = perUsd[to]! / perUsd[from]!;
+      }
+    }
+    return CurrencyConverter(map);
   }
 
-  /// Builds a converter from stored rate rows. When both USD pairs are present
-  /// we re-derive the full cross-rate matrix so partial data never produces a
-  /// missing-rate error at conversion time.
+  /// Builds a converter from stored rate rows.
+  ///
+  /// Reads the `USD -> X` rows and re-derives the full cross-rate matrix. Any
+  /// supported currency missing from the rows (e.g. an older snapshot taken
+  /// before that currency was added) falls back to [defaultUsdRate], so
+  /// conversion never throws a missing-rate error.
   factory CurrencyConverter.fromRateRows(
     List<({String from, String to, double rate})> rows,
   ) {
-    final map = <String, double>{};
+    final usdRates = <Currency, double>{};
     for (final row in rows) {
-      map['${row.from}_${row.to}'] = row.rate;
+      if (row.from != Currency.usd.name) continue;
+      final target =
+          Currency.values.where((c) => c.name == row.to).firstOrNull;
+      if (target != null && target != Currency.usd) {
+        usdRates[target] = row.rate;
+      }
     }
 
-    final usdToCny = map['usd_cny'];
-    final usdToSgd = map['usd_sgd'];
-    if (usdToCny != null && usdToSgd != null) {
-      return CurrencyConverter.fromUsdRates(
-        usdToCny: usdToCny,
-        usdToSgd: usdToSgd,
-      );
-    }
-
-    return CurrencyConverter(map);
+    final full = <Currency, double>{
+      for (final c in Currency.values)
+        if (c != Currency.usd) c: usdRates[c] ?? defaultUsdRate(c),
+    };
+    return CurrencyConverter.fromUsdRates(full);
   }
 
   double convert({
@@ -69,6 +80,8 @@ class CurrencyConverter {
     return _rates['${from.name}_${to.name}'];
   }
 
-  double get usdToCny => _rates['usd_cny'] ?? kDefaultUsdToCny;
-  double get usdToSgd => _rates['usd_sgd'] ?? kDefaultUsdToSgd;
+  /// The `USD -> currency` rate (1.0 for USD), falling back to the default when
+  /// not present in this snapshot.
+  double usdRate(Currency currency) =>
+      rateBetween(Currency.usd, currency) ?? defaultUsdRate(currency);
 }

@@ -120,15 +120,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             error: (e, _) => Text('$e'),
             data: (settings) {
               final display = Currency.fromString(settings.displayCurrency);
-              return SegmentedButton<Currency>(
-                segments: Currency.values
-                    .map((c) => ButtonSegment(value: c, label: Text(c.code)))
+              return DropdownButtonFormField<Currency>(
+                initialValue: display,
+                items: Currency.values
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text('${c.code} (${c.symbol})'),
+                        ))
                     .toList(),
-                selected: {display},
-                onSelectionChanged: (set) async {
+                onChanged: (c) async {
+                  if (c == null) return;
                   await ref
                       .read(settingsRepositoryProvider)
-                      .updateDisplayCurrency(set.first);
+                      .updateDisplayCurrency(c);
                 },
               );
             },

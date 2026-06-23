@@ -332,10 +332,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fxSnapshot => 'FX Snapshot';
 
   @override
-  String get usdToCnyLabel => '1 USD = ? CNY';
-
-  @override
-  String get usdToSgdLabel => '1 USD = ? SGD';
+  String usdToCurrencyLabel(String currency) {
+    return '1 USD = ? $currency';
+  }
 
   @override
   String get sourceNoteLabel => 'Source note (e.g. Bank of China app)';

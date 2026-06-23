@@ -1,17 +1,20 @@
 import 'package:asm/data/fx/fx_rate_service.dart';
+import 'package:asm/domain/models/enums.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
   group('FxRateService.parseResponse', () {
-    test('parses CNY and SGD rates plus date', () {
+    test('parses every supported currency present plus date', () {
       final result = FxRateService.parseResponse(
         '{"amount":1.0,"base":"USD","date":"2024-06-20",'
-        '"rates":{"CNY":7.18,"SGD":1.34}}',
+        '"rates":{"CNY":7.18,"SGD":1.34,"EUR":0.93,"GBP":0.79}}',
       );
-      expect(result.usdToCny, 7.18);
-      expect(result.usdToSgd, 1.34);
+      expect(result.usdRates[Currency.cny], 7.18);
+      expect(result.usdRates[Currency.sgd], 1.34);
+      expect(result.usdRates[Currency.eur], 0.93);
+      expect(result.usdRates[Currency.gbp], 0.79);
       expect(result.date, DateTime(2024, 6, 20));
     });
 
@@ -19,13 +22,19 @@ void main() {
       final result = FxRateService.parseResponse(
         '{"date":"2024-06-20","rates":{"CNY":7,"SGD":1}}',
       );
-      expect(result.usdToCny, 7.0);
-      expect(result.usdToSgd, 1.0);
+      expect(result.usdRates[Currency.cny], 7.0);
+      expect(result.usdRates[Currency.sgd], 1.0);
     });
 
-    test('throws when a required rate is missing', () {
+    test('keeps available rates even when some currencies are missing', () {
+      final result = FxRateService.parseResponse('{"rates":{"CNY":7.18}}');
+      expect(result.usdRates[Currency.cny], 7.18);
+      expect(result.usdRates.containsKey(Currency.sgd), isFalse);
+    });
+
+    test('throws when no supported rates are present', () {
       expect(
-        () => FxRateService.parseResponse('{"rates":{"CNY":7.18}}'),
+        () => FxRateService.parseResponse('{"rates":{"XYZ":1.0}}'),
         throwsA(isA<FxRateFetchException>()),
       );
     });
@@ -50,8 +59,8 @@ void main() {
         ),
       );
       final rates = await service.fetchLatest();
-      expect(rates.usdToCny, 7.0);
-      expect(rates.usdToSgd, 1.3);
+      expect(rates.usdRates[Currency.cny], 7.0);
+      expect(rates.usdRates[Currency.sgd], 1.3);
     });
 
     test('retries then throws on persistent server errors', () async {
@@ -86,7 +95,7 @@ void main() {
         }),
       );
       final rates = await service.fetchLatest();
-      expect(rates.usdToCny, 6.9);
+      expect(rates.usdRates[Currency.cny], 6.9);
       expect(calls, 2);
     });
   });

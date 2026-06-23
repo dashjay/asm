@@ -182,12 +182,20 @@ class _NetWorthCard extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 16),
-            SegmentedButton<Currency>(
-              segments: Currency.values
-                  .map((c) => ButtonSegment(value: c, label: Text(c.code)))
-                  .toList(),
-              selected: {display},
-              onSelectionChanged: (set) => onCurrencyChanged(set.first),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: DropdownButton<Currency>(
+                value: display,
+                items: Currency.values
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text('${c.code} (${c.symbol})'),
+                        ))
+                    .toList(),
+                onChanged: (c) {
+                  if (c != null) onCurrencyChanged(c);
+                },
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(
