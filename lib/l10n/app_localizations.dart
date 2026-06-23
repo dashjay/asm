@@ -320,6 +320,48 @@ abstract class AppLocalizations {
   /// **'Display'**
   String get displaySettings;
 
+  /// No description provided for @appLock.
+  ///
+  /// In en, this message translates to:
+  /// **'App Lock'**
+  String get appLock;
+
+  /// No description provided for @biometricLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with fingerprint'**
+  String get biometricLock;
+
+  /// No description provided for @biometricLockSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Require fingerprint or device credential when opening the app'**
+  String get biometricLockSubtitle;
+
+  /// No description provided for @biometricUnlockReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticate to access your family assets'**
+  String get biometricUnlockReason;
+
+  /// No description provided for @biometricNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No fingerprint or screen lock is set up on this device'**
+  String get biometricNotAvailable;
+
+  /// No description provided for @appLockedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticate to unlock'**
+  String get appLockedMessage;
+
+  /// No description provided for @unlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get unlock;
+
   /// No description provided for @largeChangeThresholds.
   ///
   /// In en, this message translates to:

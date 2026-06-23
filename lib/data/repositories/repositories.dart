@@ -624,6 +624,12 @@ class SettingsRepository {
       AppSettingsCompanion(localeLanguageCode: Value(languageCode)),
     );
   }
+
+  Future<void> updateBiometricLock(bool enabled) {
+    return (_db.update(_db.appSettings)..where((t) => t.id.equals(1))).write(
+      AppSettingsCompanion(biometricLockEnabled: Value(enabled)),
+    );
+  }
 }
 
 /// S3 backup upload via path-style PUT (import from S3 not yet implemented).

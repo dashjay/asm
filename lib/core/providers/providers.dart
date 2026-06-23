@@ -4,6 +4,7 @@ import '../../data/backup/s3_client.dart';
 import '../../data/db/app_database.dart';
 import '../../data/db/connection/connect.dart';
 import '../../data/repositories/repositories.dart';
+import '../security/biometric_auth.dart';
 import '../../domain/currency/currency_converter.dart';
 import '../../domain/forecast/linear_forecast.dart';
 import '../../domain/models/enums.dart';
@@ -33,6 +34,7 @@ final settingsRepositoryProvider = Provider(
 final backupRepositoryProvider = Provider(
   (ref) => BackupRepository(S3Client()),
 );
+final biometricAuthProvider = Provider((ref) => BiometricAuthService());
 
 final settingsProvider = StreamProvider<AppSetting>(
   (ref) => ref.watch(settingsRepositoryProvider).watch(),
