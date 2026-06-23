@@ -38,7 +38,7 @@ ASM 是一个**净值快照追踪器**，而不是流水账本。
 - **更新提醒** —— 每个账户可设置提醒周期，配合本地通知。
 - **变动原因** —— 为每次余额变动打标签（工资、投资收益、还贷、购置资产、转账、赠予、汇率波动、其他）。
 - **数据备份** —— 本地导出/导入，以及兼容 S3 的备份。
-- **本地化** —— 支持英文与简体中文。
+- **本地化** —— 支持英文、简体中文与日文，可在「设置」中切换。新增一门语言的成本很低，见[新增语言](#新增语言)。
 
 ---
 
@@ -112,4 +112,14 @@ flutter test             # 运行单元/组件测试
 dart run build_runner build   # 修改表结构后重新生成 Drift 代码
 ```
 
-新增用户可见文案时，编辑 `lib/l10n/app_en.arb` 与 `lib/l10n/app_zh.arb`，然后运行 `flutter gen-l10n`。修改 `lib/data/db/tables.dart` 中的 Drift 表后，记得提升 `schemaVersion`、添加 `onUpgrade` 步骤并重新生成 Drift 代码。
+新增用户可见文案时，编辑全部 `lib/l10n/app_*.arb` 文件（`app_en.arb` 为模板），然后运行 `flutter gen-l10n`。修改 `lib/data/db/tables.dart` 中的 Drift 表后，记得提升 `schemaVersion`、添加 `onUpgrade` 步骤并重新生成 Drift 代码。
+
+### 新增语言
+
+支持的语言由一个枚举统一管理，因此新增成本很低：
+
+1. 复制 `lib/l10n/app_en.arb` 为 `lib/l10n/app_<code>.arb`（如 `app_fr.arb`）并翻译其中的值，将 `"@@locale"` 改为对应语言代码。
+2. 在 `lib/domain/models/app_language.dart` 的 `AppLanguage` 枚举中新增一项，填入对应的 `code` 与该语言的本名 `nativeName`。
+3. 运行 `flutter gen-l10n`。
+
+「设置」中的语言选择器、`MaterialApp` 的 locale、`supportedLocales` 以及持久化的偏好都源自该枚举与生成的本地化文件，因此无需改动其他代码。
