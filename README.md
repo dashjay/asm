@@ -53,7 +53,9 @@ matters most is the **balance-update adherence rate**, not raw DAU.
 - **Change reasons** — tag each balance change (salary, investment return, loan
   repayment, asset purchase, transfer, gift, FX fluctuation, other).
 - **Backup** — local export/import plus S3-compatible backup.
-- **Localization** — English and Simplified Chinese.
+- **Localization** — English, Simplified Chinese, and Japanese, selectable in
+  Settings. See [Adding a language](#adding-a-language) for the (small) cost of
+  adding another.
 
 ---
 
@@ -149,7 +151,21 @@ flutter test             # run unit/widget tests
 dart run build_runner build   # regenerate Drift code after editing tables
 ```
 
-When adding user-facing copy, edit `lib/l10n/app_en.arb` and `lib/l10n/app_zh.arb`,
-then run `flutter gen-l10n`. After changing Drift tables in
+When adding user-facing copy, edit every `lib/l10n/app_*.arb` file (`app_en.arb`
+is the template), then run `flutter gen-l10n`. After changing Drift tables in
 `lib/data/db/tables.dart`, bump `schemaVersion`, add an `onUpgrade` step, and
 regenerate the Drift code.
+
+### Adding a language
+
+The supported languages are driven by a single enum, so adding one is cheap:
+
+1. Copy `lib/l10n/app_en.arb` to `lib/l10n/app_<code>.arb` (e.g. `app_fr.arb`)
+   and translate the values. Set `"@@locale"` to the new code.
+2. Add one entry to `AppLanguage` in `lib/domain/models/app_language.dart` with
+   the matching `code` and its `nativeName` (the language's own name).
+3. Run `flutter gen-l10n`.
+
+The Settings language selector, the `MaterialApp` locale, `supportedLocales`,
+and the persisted preference all derive from that enum and the generated
+localizations, so no other code needs to change.
