@@ -21,22 +21,31 @@ enum AccountCategory {
       AccountCategory.values.firstWhere((e) => e.name == value);
 }
 
+/// Supported display/account currencies.
+///
+/// USD is the pivot used for FX math: every snapshot stores `USD -> X` rates
+/// and [CurrencyConverter] derives all cross rates from them. Adding a new
+/// region is therefore just a new entry here plus a fallback rate in
+/// `fx_defaults.dart` — no schema, converter or wizard changes required.
 enum Currency {
-  cny,
-  usd,
-  sgd;
+  cny('CNY', '¥'),
+  usd('USD', '\$'),
+  sgd('SGD', 'S\$'),
+  eur('EUR', '€'),
+  gbp('GBP', '£'),
+  jpy('JPY', 'JP¥'),
+  hkd('HKD', 'HK\$'),
+  aud('AUD', 'A\$'),
+  cad('CAD', 'C\$'),
+  inr('INR', '₹');
 
-  String get code => switch (this) {
-        cny => 'CNY',
-        usd => 'USD',
-        sgd => 'SGD',
-      };
+  const Currency(this.code, this.symbol);
 
-  String get symbol => switch (this) {
-        cny => '¥',
-        usd => '\$',
-        sgd => 'S\$',
-      };
+  /// ISO 4217 code, e.g. `USD`.
+  final String code;
+
+  /// Short display symbol, e.g. `\$`.
+  final String symbol;
 
   static Currency fromString(String value) =>
       Currency.values.firstWhere((e) => e.name == value);

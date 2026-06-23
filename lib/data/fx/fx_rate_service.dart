@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/models/enums.dart';
+
 class FxRateFetchException implements Exception {
   FxRateFetchException(this.message);
 
@@ -14,20 +16,27 @@ class FxRateFetchException implements Exception {
 /// Latest USD-based FX rates fetched from a remote provider.
 class FetchedFxRates {
   const FetchedFxRates({
-    required this.usdToCny,
-    required this.usdToSgd,
+    required this.usdRates,
     required this.date,
   });
 
-  final double usdToCny;
-  final double usdToSgd;
+  /// `USD -> X` rates keyed by [Currency]. Only currencies the upstream
+  /// provider returned are present; callers fill any gaps from defaults.
+  final Map<Currency, double> usdRates;
 
   /// The day the upstream provider published these rates.
   final DateTime date;
 }
 
-/// Fetches the latest USD->CNY and USD->SGD rates from a free, key-less
-/// endpoint (frankfurter.app, backed by ECB reference rates).
+/// Comma-separated list of every supported non-USD currency code, used to build
+/// the upstream request (e.g. `CNY,SGD,EUR,...`).
+final String _supportedTargetCodes = Currency.values
+    .where((c) => c != Currency.usd)
+    .map((c) => c.code)
+    .join(',');
+
+/// Fetches the latest `USD -> X` rates for every supported currency from a
+/// free, key-less endpoint (frankfurter.app, backed by ECB reference rates).
 ///
 /// On any network/parse failure it retries a few times with exponential
 /// backoff and then throws [FxRateFetchException] so the caller can fall back
@@ -41,7 +50,10 @@ class FxRateService {
     this.baseBackoff = const Duration(milliseconds: 500),
   })  : _client = client ?? http.Client(),
         _endpoint = endpoint ??
-            Uri.parse('https://api.frankfurter.app/latest?from=USD&to=CNY,SGD');
+            Uri.parse(
+              'https://api.frankfurter.app/latest'
+              '?from=USD&to=$_supportedTargetCodes',
+            );
 
   final http.Client _client;
   final Uri _endpoint;
@@ -74,6 +86,9 @@ class FxRateService {
   /// Parses a frankfurter.app `/latest` JSON body into [FetchedFxRates].
   ///
   /// Kept separate from the network call so it is trivially unit-testable.
+  /// Picks up every supported currency present in the response and ignores
+  /// extras; throws only when the payload is malformed or yields no usable
+  /// rates at all (so a provider dropping one currency does not block updates).
   static FetchedFxRates parseResponse(String body) {
     final Object? decoded;
     try {
@@ -88,18 +103,23 @@ class FxRateService {
     if (rates is! Map<String, dynamic>) {
       throw FxRateFetchException('Response is missing the "rates" object');
     }
-    final cny = rates['CNY'];
-    final sgd = rates['SGD'];
-    if (cny is! num || sgd is! num) {
-      throw FxRateFetchException('Response is missing CNY/SGD rates');
+
+    final usdRates = <Currency, double>{};
+    for (final currency in Currency.values) {
+      if (currency == Currency.usd) continue;
+      final value = rates[currency.code];
+      if (value is num) {
+        usdRates[currency] = value.toDouble();
+      }
     }
+    if (usdRates.isEmpty) {
+      throw FxRateFetchException('Response contained no supported rates');
+    }
+
     final rawDate = decoded['date'];
-    final date =
-        rawDate is String ? DateTime.tryParse(rawDate) ?? DateTime.now() : DateTime.now();
-    return FetchedFxRates(
-      usdToCny: cny.toDouble(),
-      usdToSgd: sgd.toDouble(),
-      date: date,
-    );
+    final date = rawDate is String
+        ? DateTime.tryParse(rawDate) ?? DateTime.now()
+        : DateTime.now();
+    return FetchedFxRates(usdRates: usdRates, date: date);
   }
 }

@@ -23,10 +23,13 @@ class SnapshotWizardPage extends ConsumerStatefulWidget {
 
 class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
   int _step = 0;
-  final _usdToCnyController =
-      TextEditingController(text: kDefaultUsdToCny.toString());
-  final _usdToSgdController =
-      TextEditingController(text: kDefaultUsdToSgd.toString());
+
+  /// One `USD -> X` input per non-USD currency, seeded with fallback defaults.
+  final Map<Currency, TextEditingController> _rateControllers = {
+    for (final c in Currency.values)
+      if (c != Currency.usd)
+        c: TextEditingController(text: defaultUsdRate(c).toString()),
+  };
   final _sourceNoteController = TextEditingController();
   final _amountControllers = <int, TextEditingController>{};
   final _changeMeta = <int, ({ChangeReason reason, String note})>{};
@@ -49,13 +52,11 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
     if (latest != null) {
       final rates = await fxRepo.ratesForSnapshot(latest.id);
       for (final rate in rates) {
-        if (rate.fromCurrency == Currency.usd.name &&
-            rate.toCurrency == Currency.cny.name) {
-          _usdToCnyController.text = rate.rate.toString();
-        }
-        if (rate.fromCurrency == Currency.usd.name &&
-            rate.toCurrency == Currency.sgd.name) {
-          _usdToSgdController.text = rate.rate.toString();
+        if (rate.fromCurrency != Currency.usd.name) continue;
+        final target =
+            Currency.values.where((c) => c.name == rate.toCurrency).firstOrNull;
+        if (target != null && _rateControllers.containsKey(target)) {
+          _rateControllers[target]!.text = rate.rate.toString();
         }
       }
       _sourceNoteController.text = latest.sourceNote;
@@ -93,8 +94,9 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
       if (!mounted) return;
       final day = rates.date.toIso8601String().substring(0, 10);
       setState(() {
-        _usdToCnyController.text = rates.usdToCny.toString();
-        _usdToSgdController.text = rates.usdToSgd.toString();
+        for (final entry in rates.usdRates.entries) {
+          _rateControllers[entry.key]?.text = entry.value.toString();
+        }
         _sourceNoteController.text = '$kFxApiSourceLabel · $day';
         _fetchingRates = false;
         _ratesAutoFilled = true;
@@ -111,8 +113,9 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
 
   @override
   void dispose() {
-    _usdToCnyController.dispose();
-    _usdToSgdController.dispose();
+    for (final c in _rateControllers.values) {
+      c.dispose();
+    }
     _sourceNoteController.dispose();
     for (final c in _amountControllers.values) {
       c.dispose();
@@ -120,10 +123,15 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
     super.dispose();
   }
 
-  CurrencyConverter get _converter => CurrencyConverter.fromUsdRates(
-        usdToCny: double.parse(_usdToCnyController.text),
-        usdToSgd: double.parse(_usdToSgdController.text),
-      );
+  /// Parses the entered `USD -> X` rates, falling back to defaults for any
+  /// field that is empty or invalid so the converter is always complete.
+  Map<Currency, double> get _usdRates => {
+        for (final entry in _rateControllers.entries)
+          entry.key:
+              double.tryParse(entry.value.text.trim()) ?? defaultUsdRate(entry.key),
+      };
+
+  CurrencyConverter get _converter => CurrencyConverter.fromUsdRates(_usdRates);
 
   Future<bool> _validateBalances() async {
     final settings = await ref.read(settingsRepositoryProvider).get();
@@ -177,8 +185,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
     // Derived providers (home summary, trends, latest FX) watch the database
     // directly, so they refresh on their own once this write commits.
     await ref.read(sessionRepositoryProvider).createSession(
-          usdToCny: double.parse(_usdToCnyController.text),
-          usdToSgd: double.parse(_usdToSgdController.text),
+          usdRates: _usdRates,
           sourceNote: _sourceNoteController.text.trim(),
           accountAmounts: amounts,
           changeMeta: _changeMeta,
@@ -214,8 +221,10 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
         currentStep: _step,
         onStepContinue: () async {
           if (_step == 0) {
-            if (double.tryParse(_usdToCnyController.text) == null ||
-                double.tryParse(_usdToSgdController.text) == null) {
+            final allValid = _rateControllers.values.every(
+              (c) => (double.tryParse(c.text.trim()) ?? 0) > 0,
+            );
+            if (!allValid) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(l10n.enterValidFxRates)),
               );
@@ -271,24 +280,17 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
                     autoFilled: _ratesAutoFilled,
                     onRetry: _fetchLatestRates,
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _usdToCnyController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: l10n.usdToCnyLabel,
+                  for (final entry in _rateControllers.entries) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: entry.value,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: l10n.usdToCurrencyLabel(entry.key.code),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _usdToSgdController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: l10n.usdToSgdLabel,
-                    ),
-                  ),
+                  ],
                   const SizedBox(height: 12),
                   TextField(
                     controller: _sourceNoteController,

@@ -68,12 +68,14 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  /// Inserts an FX snapshot plus its USD->CNY and USD->SGD rate rows.
+  /// Inserts an FX snapshot plus one `USD -> X` rate row per supported currency.
   ///
-  /// Shared by the repositories so the snapshot shape is defined in exactly one place.
+  /// Shared by the repositories so the snapshot shape is defined in exactly one
+  /// place. [usdRates] maps each non-USD [Currency] to its `USD -> X` rate; any
+  /// supported currency omitted from the map falls back to [defaultUsdRate], so
+  /// every snapshot always persists a complete set of rates.
   Future<int> insertFxSnapshot({
-    double? usdToCny,
-    double? usdToSgd,
+    Map<Currency, double>? usdRates,
     DateTime? recordedAt,
     String? sourceNote,
   }) async {
@@ -87,18 +89,14 @@ class AppDatabase extends _$AppDatabase {
     );
     await batch((batch) {
       batch.insertAll(fxRates, [
-        FxRatesCompanion.insert(
-          fxSnapshotId: fxId,
-          fromCurrency: Currency.usd.name,
-          toCurrency: Currency.cny.name,
-          rate: usdToCny ?? kDefaultUsdToCny,
-        ),
-        FxRatesCompanion.insert(
-          fxSnapshotId: fxId,
-          fromCurrency: Currency.usd.name,
-          toCurrency: Currency.sgd.name,
-          rate: usdToSgd ?? kDefaultUsdToSgd,
-        ),
+        for (final currency in Currency.values)
+          if (currency != Currency.usd)
+            FxRatesCompanion.insert(
+              fxSnapshotId: fxId,
+              fromCurrency: Currency.usd.name,
+              toCurrency: currency.name,
+              rate: usdRates?[currency] ?? defaultUsdRate(currency),
+            ),
       ]);
     });
     return fxId;

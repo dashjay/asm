@@ -203,19 +203,17 @@ class FxRepository {
     return (await snapshotById(id))!;
   }
 
-  /// Persists an FX snapshot together with its USD->CNY and USD->SGD rates.
+  /// Persists an FX snapshot together with its `USD -> X` rates.
   ///
   /// This is the single source of truth for "what an FX snapshot looks like",
-  /// replacing three near-identical copies that previously lived in repositories.
+  /// replacing near-identical copies that previously lived in repositories.
   Future<int> insertSnapshot({
-    double? usdToCny,
-    double? usdToSgd,
+    Map<Currency, double>? usdRates,
     DateTime? recordedAt,
     String? sourceNote,
   }) {
     return _db.insertFxSnapshot(
-      usdToCny: usdToCny,
-      usdToSgd: usdToSgd,
+      usdRates: usdRates,
       recordedAt: recordedAt,
       sourceNote: sourceNote,
     );
@@ -238,10 +236,7 @@ class FxRepository {
   Future<CurrencyConverter> latestConverter() async {
     final snapshot = await latest();
     if (snapshot == null) {
-      return CurrencyConverter.fromUsdRates(
-        usdToCny: kDefaultUsdToCny,
-        usdToSgd: kDefaultUsdToSgd,
-      );
+      return CurrencyConverter.fromUsdRates(defaultUsdRates());
     }
     return converterForSnapshot(snapshot.id);
   }
@@ -278,16 +273,14 @@ class SessionRepository {
   /// Creates a new snapshot session: persists the FX rates, then one balance
   /// snapshot per account with its delta vs. the previous value.
   Future<int> createSession({
-    required double usdToCny,
-    required double usdToSgd,
+    required Map<Currency, double> usdRates,
     required String sourceNote,
     required Map<int, double> accountAmounts,
     required Map<int, ({ChangeReason? reason, String? note})> changeMeta,
   }) async {
     return _db.transaction(() async {
       final fxId = await _db.insertFxSnapshot(
-        usdToCny: usdToCny,
-        usdToSgd: usdToSgd,
+        usdRates: usdRates,
         sourceNote: sourceNote,
       );
 

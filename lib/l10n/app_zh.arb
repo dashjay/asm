@@ -95,8 +95,12 @@
   "next": "下一步",
   "previous": "上一步",
   "fxSnapshot": "汇率快照",
-  "usdToCnyLabel": "1 USD = ? CNY",
-  "usdToSgdLabel": "1 USD = ? SGD",
+  "usdToCurrencyLabel": "1 USD = ? {currency}",
+  "@usdToCurrencyLabel": {
+    "placeholders": {
+      "currency": {"type": "String"}
+    }
+  },
   "sourceNoteLabel": "来源备注（如：中国银行 App）",
   "accountBalances": "账户余额",
   "preview": "预览",

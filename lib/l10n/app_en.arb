@@ -145,8 +145,12 @@
   "next": "Next",
   "previous": "Previous",
   "fxSnapshot": "FX Snapshot",
-  "usdToCnyLabel": "1 USD = ? CNY",
-  "usdToSgdLabel": "1 USD = ? SGD",
+  "usdToCurrencyLabel": "1 USD = ? {currency}",
+  "@usdToCurrencyLabel": {
+    "placeholders": {
+      "currency": {"type": "String"}
+    }
+  },
   "sourceNoteLabel": "Source note (e.g. Bank of China app)",
   "accountBalances": "Account Balances",
   "preview": "Preview",
