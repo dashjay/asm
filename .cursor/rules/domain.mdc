@@ -21,7 +21,12 @@ final cny = converter.convert(amount: usd, from: Currency.usd, to: Currency.cny)
 final cny = usd * 7.25;
 ```
 
-- FX fallback numbers live in `fx_defaults.dart` (`kDefaultUsdToCny`,
-  `kDefaultUsdToSgd`). Do not re-hardcode `7.25` / `1.35` anywhere.
+- USD is the FX pivot: snapshots store only `USD -> X` rates and
+  `CurrencyConverter` derives all cross rates from them. To add a currency, add
+  the enum value plus a fallback rate — never special-case pairs.
+- FX fallback numbers live in `fx_defaults.dart` as the per-currency
+  `kDefaultUsdRates` map (use `defaultUsdRate(currency)` /`defaultUsdRates()`).
+  Do not re-hardcode `USD -> X` rates anywhere else.
 - Enums in `models/enums.dart` own their own `label(l10n)` / `fromString`
-  helpers; extend those rather than scattering `switch` statements.
+  helpers and data-driven fields (e.g. `Currency.code` / `symbol`); extend
+  those rather than scattering `switch` statements.
