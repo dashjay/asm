@@ -2633,6 +2633,20 @@ class $AppSettingsTable extends AppSettings
         requiredDuringInsert: false,
         defaultValue: const Constant('en'),
       );
+  static const VerificationMeta _biometricLockEnabledMeta =
+      const VerificationMeta('biometricLockEnabled');
+  @override
+  late final GeneratedColumn<bool> biometricLockEnabled = GeneratedColumn<bool>(
+    'biometric_lock_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("biometric_lock_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2644,6 +2658,7 @@ class $AppSettingsTable extends AppSettings
     s3AccessKey,
     s3Prefix,
     localeLanguageCode,
+    biometricLockEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2723,6 +2738,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('biometric_lock_enabled')) {
+      context.handle(
+        _biometricLockEnabledMeta,
+        biometricLockEnabled.isAcceptableOrUnknown(
+          data['biometric_lock_enabled']!,
+          _biometricLockEnabledMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2768,6 +2792,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.string,
         data['${effectivePrefix}locale_language_code'],
       )!,
+      biometricLockEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}biometric_lock_enabled'],
+      )!,
     );
   }
 
@@ -2787,6 +2815,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final String s3AccessKey;
   final String s3Prefix;
   final String localeLanguageCode;
+  final bool biometricLockEnabled;
   const AppSetting({
     required this.id,
     required this.displayCurrency,
@@ -2797,6 +2826,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.s3AccessKey,
     required this.s3Prefix,
     required this.localeLanguageCode,
+    required this.biometricLockEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2814,6 +2844,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['s3_access_key'] = Variable<String>(s3AccessKey);
     map['s3_prefix'] = Variable<String>(s3Prefix);
     map['locale_language_code'] = Variable<String>(localeLanguageCode);
+    map['biometric_lock_enabled'] = Variable<bool>(biometricLockEnabled);
     return map;
   }
 
@@ -2828,6 +2859,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       s3AccessKey: Value(s3AccessKey),
       s3Prefix: Value(s3Prefix),
       localeLanguageCode: Value(localeLanguageCode),
+      biometricLockEnabled: Value(biometricLockEnabled),
     );
   }
 
@@ -2852,6 +2884,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       localeLanguageCode: serializer.fromJson<String>(
         json['localeLanguageCode'],
       ),
+      biometricLockEnabled: serializer.fromJson<bool>(
+        json['biometricLockEnabled'],
+      ),
     );
   }
   @override
@@ -2871,6 +2906,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       's3AccessKey': serializer.toJson<String>(s3AccessKey),
       's3Prefix': serializer.toJson<String>(s3Prefix),
       'localeLanguageCode': serializer.toJson<String>(localeLanguageCode),
+      'biometricLockEnabled': serializer.toJson<bool>(biometricLockEnabled),
     };
   }
 
@@ -2884,6 +2920,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? s3AccessKey,
     String? s3Prefix,
     String? localeLanguageCode,
+    bool? biometricLockEnabled,
   }) => AppSetting(
     id: id ?? this.id,
     displayCurrency: displayCurrency ?? this.displayCurrency,
@@ -2896,6 +2933,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     s3AccessKey: s3AccessKey ?? this.s3AccessKey,
     s3Prefix: s3Prefix ?? this.s3Prefix,
     localeLanguageCode: localeLanguageCode ?? this.localeLanguageCode,
+    biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -2920,6 +2958,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       localeLanguageCode: data.localeLanguageCode.present
           ? data.localeLanguageCode.value
           : this.localeLanguageCode,
+      biometricLockEnabled: data.biometricLockEnabled.present
+          ? data.biometricLockEnabled.value
+          : this.biometricLockEnabled,
     );
   }
 
@@ -2934,7 +2975,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('s3Bucket: $s3Bucket, ')
           ..write('s3AccessKey: $s3AccessKey, ')
           ..write('s3Prefix: $s3Prefix, ')
-          ..write('localeLanguageCode: $localeLanguageCode')
+          ..write('localeLanguageCode: $localeLanguageCode, ')
+          ..write('biometricLockEnabled: $biometricLockEnabled')
           ..write(')'))
         .toString();
   }
@@ -2950,6 +2992,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     s3AccessKey,
     s3Prefix,
     localeLanguageCode,
+    biometricLockEnabled,
   );
   @override
   bool operator ==(Object other) =>
@@ -2964,7 +3007,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.s3Bucket == this.s3Bucket &&
           other.s3AccessKey == this.s3AccessKey &&
           other.s3Prefix == this.s3Prefix &&
-          other.localeLanguageCode == this.localeLanguageCode);
+          other.localeLanguageCode == this.localeLanguageCode &&
+          other.biometricLockEnabled == this.biometricLockEnabled);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -2977,6 +3021,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> s3AccessKey;
   final Value<String> s3Prefix;
   final Value<String> localeLanguageCode;
+  final Value<bool> biometricLockEnabled;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.displayCurrency = const Value.absent(),
@@ -2987,6 +3032,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.s3AccessKey = const Value.absent(),
     this.s3Prefix = const Value.absent(),
     this.localeLanguageCode = const Value.absent(),
+    this.biometricLockEnabled = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2998,6 +3044,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.s3AccessKey = const Value.absent(),
     this.s3Prefix = const Value.absent(),
     this.localeLanguageCode = const Value.absent(),
+    this.biometricLockEnabled = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -3009,6 +3056,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? s3AccessKey,
     Expression<String>? s3Prefix,
     Expression<String>? localeLanguageCode,
+    Expression<bool>? biometricLockEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3023,6 +3071,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (s3Prefix != null) 's3_prefix': s3Prefix,
       if (localeLanguageCode != null)
         'locale_language_code': localeLanguageCode,
+      if (biometricLockEnabled != null)
+        'biometric_lock_enabled': biometricLockEnabled,
     });
   }
 
@@ -3036,6 +3086,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? s3AccessKey,
     Value<String>? s3Prefix,
     Value<String>? localeLanguageCode,
+    Value<bool>? biometricLockEnabled,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -3049,6 +3100,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       s3AccessKey: s3AccessKey ?? this.s3AccessKey,
       s3Prefix: s3Prefix ?? this.s3Prefix,
       localeLanguageCode: localeLanguageCode ?? this.localeLanguageCode,
+      biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
     );
   }
 
@@ -3086,6 +3138,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (localeLanguageCode.present) {
       map['locale_language_code'] = Variable<String>(localeLanguageCode.value);
     }
+    if (biometricLockEnabled.present) {
+      map['biometric_lock_enabled'] = Variable<bool>(
+        biometricLockEnabled.value,
+      );
+    }
     return map;
   }
 
@@ -3100,7 +3157,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('s3Bucket: $s3Bucket, ')
           ..write('s3AccessKey: $s3AccessKey, ')
           ..write('s3Prefix: $s3Prefix, ')
-          ..write('localeLanguageCode: $localeLanguageCode')
+          ..write('localeLanguageCode: $localeLanguageCode, ')
+          ..write('biometricLockEnabled: $biometricLockEnabled')
           ..write(')'))
         .toString();
   }
@@ -5540,6 +5598,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> s3AccessKey,
       Value<String> s3Prefix,
       Value<String> localeLanguageCode,
+      Value<bool> biometricLockEnabled,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -5552,6 +5611,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> s3AccessKey,
       Value<String> s3Prefix,
       Value<String> localeLanguageCode,
+      Value<bool> biometricLockEnabled,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -5605,6 +5665,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get localeLanguageCode => $composableBuilder(
     column: $table.localeLanguageCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get biometricLockEnabled => $composableBuilder(
+    column: $table.biometricLockEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5662,6 +5727,11 @@ class $$AppSettingsTableOrderingComposer
     column: $table.localeLanguageCode,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get biometricLockEnabled => $composableBuilder(
+    column: $table.biometricLockEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -5711,6 +5781,11 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.localeLanguageCode,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get biometricLockEnabled => $composableBuilder(
+    column: $table.biometricLockEnabled,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -5754,6 +5829,7 @@ class $$AppSettingsTableTableManager
                 Value<String> s3AccessKey = const Value.absent(),
                 Value<String> s3Prefix = const Value.absent(),
                 Value<String> localeLanguageCode = const Value.absent(),
+                Value<bool> biometricLockEnabled = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 displayCurrency: displayCurrency,
@@ -5764,6 +5840,7 @@ class $$AppSettingsTableTableManager
                 s3AccessKey: s3AccessKey,
                 s3Prefix: s3Prefix,
                 localeLanguageCode: localeLanguageCode,
+                biometricLockEnabled: biometricLockEnabled,
               ),
           createCompanionCallback:
               ({
@@ -5777,6 +5854,7 @@ class $$AppSettingsTableTableManager
                 Value<String> s3AccessKey = const Value.absent(),
                 Value<String> s3Prefix = const Value.absent(),
                 Value<String> localeLanguageCode = const Value.absent(),
+                Value<bool> biometricLockEnabled = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 displayCurrency: displayCurrency,
@@ -5787,6 +5865,7 @@ class $$AppSettingsTableTableManager
                 s3AccessKey: s3AccessKey,
                 s3Prefix: s3Prefix,
                 localeLanguageCode: localeLanguageCode,
+                biometricLockEnabled: biometricLockEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

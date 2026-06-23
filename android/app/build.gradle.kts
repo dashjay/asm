@@ -22,6 +22,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
     defaultConfig {
         applicationId = "com.asm.asm"
         minSdk = maxOf(23, flutter.minSdkVersion)

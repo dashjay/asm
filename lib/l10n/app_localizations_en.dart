@@ -140,6 +140,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettings => 'Display';
 
   @override
+  String get appLock => 'App Lock';
+
+  @override
+  String get biometricLock => 'Unlock with fingerprint';
+
+  @override
+  String get biometricLockSubtitle =>
+      'Require fingerprint or device credential when opening the app';
+
+  @override
+  String get biometricUnlockReason =>
+      'Authenticate to access your family assets';
+
+  @override
+  String get biometricNotAvailable =>
+      'No fingerprint or screen lock is set up on this device';
+
+  @override
+  String get appLockedMessage => 'Authenticate to unlock';
+
+  @override
+  String get unlock => 'Unlock';
+
+  @override
   String get largeChangeThresholds => 'Large Change Thresholds';
 
   @override

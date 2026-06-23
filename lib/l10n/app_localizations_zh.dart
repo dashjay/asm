@@ -134,6 +134,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettings => '展示设置';
 
   @override
+  String get appLock => '应用锁';
+
+  @override
+  String get biometricLock => '指纹解锁';
+
+  @override
+  String get biometricLockSubtitle => '打开应用时需要验证指纹或设备密码';
+
+  @override
+  String get biometricUnlockReason => '验证身份以访问家庭资产';
+
+  @override
+  String get biometricNotAvailable => '此设备未设置指纹或屏幕锁';
+
+  @override
+  String get appLockedMessage => '请验证身份以解锁';
+
+  @override
+  String get unlock => '解锁';
+
+  @override
   String get largeChangeThresholds => '大额变动阈值';
 
   @override

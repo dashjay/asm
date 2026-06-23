@@ -6,6 +6,7 @@ import 'core/notifications/notification_scheduler.dart';
 import 'core/providers/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/security/app_lock_gate.dart';
 import 'l10n/app_localizations.dart';
 
 class AsmApp extends ConsumerStatefulWidget {
@@ -48,6 +49,7 @@ class _AsmAppState extends ConsumerState<AsmApp> {
       locale: Locale(localeCode),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => AppLockGate(child: child ?? const SizedBox()),
     );
   }
 }

@@ -70,6 +70,8 @@ class AppSettings extends Table {
   TextColumn get s3Prefix => text().withDefault(const Constant(''))();
   TextColumn get localeLanguageCode =>
       text().withDefault(const Constant('en'))();
+  BoolColumn get biometricLockEnabled =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};

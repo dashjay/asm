@@ -27,6 +27,7 @@ dependencies:
   file_picker: ^8.3.7
   http: ^1.2.0
   crypto: ^3.0.6
+  local_auth: ^3.0.1
 
 dev_dependencies:
   flutter_test:

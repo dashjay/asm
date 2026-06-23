@@ -60,6 +60,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ).rescheduleAll();
   }
 
+  Future<void> _toggleBiometricLock(bool enable) async {
+    final l10n = AppLocalizations.of(context)!;
+    final repo = ref.read(settingsRepositoryProvider);
+
+    if (enable) {
+      final auth = ref.read(biometricAuthProvider);
+      if (!await auth.isAvailable()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.biometricNotAvailable)),
+          );
+        }
+        return;
+      }
+      // Confirm the user can actually authenticate before locking them in.
+      if (!await auth.authenticate(l10n.biometricUnlockReason)) return;
+    }
+    await repo.updateBiometricLock(enable);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -129,6 +149,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 12),
           FilledButton(onPressed: _saveThresholds, child: Text(l10n.saveThresholds)),
+          const SizedBox(height: 24),
+          Text(l10n.appLock, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          settingsAsync.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (e, _) => Text('$e'),
+            data: (settings) => SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.biometricLock),
+              subtitle: Text(l10n.biometricLockSubtitle),
+              value: settings.biometricLockEnabled,
+              onChanged: _toggleBiometricLock,
+            ),
+          ),
           const SizedBox(height: 24),
           ListTile(
             title: Text(l10n.dataBackup),
