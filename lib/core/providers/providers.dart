@@ -2,12 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/backup/s3_client.dart';
 import '../../data/db/app_database.dart';
+import '../../data/fx/fx_rate_service.dart';
 import '../../data/db/connection/connect.dart';
 import '../../data/repositories/repositories.dart';
 import '../security/biometric_auth.dart';
 import '../../domain/currency/currency_converter.dart';
 import '../../domain/forecast/linear_forecast.dart';
 import '../../domain/models/enums.dart';
+import '../../domain/models/trend_filter.dart';
 import '../../domain/net_worth_calculator.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -35,6 +37,7 @@ final backupRepositoryProvider = Provider(
   (ref) => BackupRepository(S3Client()),
 );
 final biometricAuthProvider = Provider((ref) => BiometricAuthService());
+final fxRateServiceProvider = Provider((ref) => FxRateService());
 
 final settingsProvider = StreamProvider<AppSetting>(
   (ref) => ref.watch(settingsRepositoryProvider).watch(),
@@ -97,12 +100,12 @@ final latestSessionProvider = StreamProvider<UpdateSession?>((ref) {
   return _watchDashboard(db, repo.latest);
 });
 
-/// Parameters for [familyTrendProvider]: the visible time window plus optional
-/// filters by family member and asset category. A `null` filter means "all".
+/// Parameters for [familyTrendProvider]: the visible time window plus an
+/// optional multi-select [TrendFilter] by family members and asset categories.
+/// An empty filter means "all".
 typedef TrendQuery = ({
   ChartRange range,
-  int? memberId,
-  AccountCategory? category,
+  TrendFilter filter,
 });
 
 final familyTrendProvider = StreamProvider.family<
@@ -115,8 +118,8 @@ final familyTrendProvider = StreamProvider.family<
     return ref.watch(sessionRepositoryProvider).watchFamilyTrend(
           displayCurrency: display,
           since: since,
-          memberId: query.memberId,
-          category: query.category,
+          memberIds: query.filter.memberIds,
+          categories: query.filter.categories,
         );
   },
 );
