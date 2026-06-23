@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/app_constants.dart';
 import '../../core/notifications/notification_scheduler.dart';
 import '../../data/db/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/currency/currency_converter.dart';
+import '../../domain/currency/fx_defaults.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/net_worth_calculator.dart';
 import '../../l10n/app_localizations.dart';
@@ -21,14 +23,19 @@ class SnapshotWizardPage extends ConsumerStatefulWidget {
 
 class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
   int _step = 0;
-  final _usdToCnyController = TextEditingController(text: '7.25');
-  final _usdToSgdController = TextEditingController(text: '1.35');
+  final _usdToCnyController =
+      TextEditingController(text: kDefaultUsdToCny.toString());
+  final _usdToSgdController =
+      TextEditingController(text: kDefaultUsdToSgd.toString());
   final _sourceNoteController = TextEditingController();
   final _amountControllers = <int, TextEditingController>{};
   final _changeMeta = <int, ({ChangeReason reason, String note})>{};
   final Map<int, double> _previousAmounts = {};
   List<Account> _accounts = [];
   bool _loading = true;
+  bool _fetchingRates = false;
+  bool _fetchFailed = false;
+  bool _ratesAutoFilled = false;
 
   @override
   void initState() {
@@ -68,6 +75,38 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
     }
 
     if (mounted) setState(() => _loading = false);
+
+    // Once the wizard is on screen, try to pull the latest rates online. On
+    // failure we keep the values pre-filled above (latest snapshot or defaults)
+    // so the user can simply type them in.
+    await _fetchLatestRates();
+  }
+
+  Future<void> _fetchLatestRates() async {
+    if (!mounted) return;
+    setState(() {
+      _fetchingRates = true;
+      _fetchFailed = false;
+    });
+    try {
+      final rates = await ref.read(fxRateServiceProvider).fetchLatest();
+      if (!mounted) return;
+      final day = rates.date.toIso8601String().substring(0, 10);
+      setState(() {
+        _usdToCnyController.text = rates.usdToCny.toString();
+        _usdToSgdController.text = rates.usdToSgd.toString();
+        _sourceNoteController.text = '$kFxApiSourceLabel · $day';
+        _fetchingRates = false;
+        _ratesAutoFilled = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _fetchingRates = false;
+        _fetchFailed = true;
+        _ratesAutoFilled = false;
+      });
+    }
   }
 
   @override
@@ -224,7 +263,15 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
             content: Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _FxFetchStatus(
+                    fetching: _fetchingRates,
+                    failed: _fetchFailed,
+                    autoFilled: _ratesAutoFilled,
+                    onRetry: _fetchLatestRates,
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: _usdToCnyController,
                     keyboardType:
@@ -287,6 +334,85 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Inline banner above the FX inputs that reflects the auto-fetch lifecycle:
+/// fetching, success (auto-filled), or failure (with a retry action).
+class _FxFetchStatus extends StatelessWidget {
+  const _FxFetchStatus({
+    required this.fetching,
+    required this.failed,
+    required this.autoFilled,
+    required this.onRetry,
+  });
+
+  final bool fetching;
+  final bool failed;
+  final bool autoFilled;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    if (fetching) {
+      return Row(
+        children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(l10n.fetchingFxRates)),
+        ],
+      );
+    }
+
+    if (failed) {
+      return Row(
+        children: [
+          Icon(Icons.cloud_off, size: 18, color: theme.colorScheme.error),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l10n.fxFetchFailed,
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(l10n.retry),
+          ),
+        ],
+      );
+    }
+
+    if (autoFilled) {
+      return Row(
+        children: [
+          Icon(Icons.check_circle_outline,
+              size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(child: Text(l10n.fxRatesAutoFilled)),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(l10n.fetchLatestFxRates),
+          ),
+        ],
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: onRetry,
+        icon: const Icon(Icons.refresh, size: 18),
+        label: Text(l10n.fetchLatestFxRates),
       ),
     );
   }
