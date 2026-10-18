@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/notifications/notification_scheduler.dart';
 import '../../core/providers/providers.dart';
+import '../../domain/models/app_language.dart';
 import '../../domain/models/enums.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -101,14 +102,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('$e'),
             data: (settings) {
-              final locale = settings.localeLanguageCode;
-              return SegmentedButton<String>(
+              final selected = AppLanguage.fromCode(settings.localeLanguageCode);
+              return SegmentedButton<AppLanguage>(
+                showSelectedIcon: false,
                 segments: [
-                  ButtonSegment(value: 'en', label: Text(l10n.languageEnglish)),
-                  ButtonSegment(value: 'zh', label: Text(l10n.languageChinese)),
+                  for (final language in AppLanguage.values)
+                    ButtonSegment(
+                      value: language,
+                      label: Text(language.nativeName),
+                    ),
                 ],
-                selected: {locale},
-                onSelectionChanged: (set) => _updateLocale(set.first),
+                selected: {selected},
+                onSelectionChanged: (set) => _updateLocale(set.first.code),
               );
             },
           ),
