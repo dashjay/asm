@@ -25,6 +25,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   bool _reminderEnabled = true;
   int _reminderDays = 30;
   bool _loading = true;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final l10n = AppLocalizations.of(context)!;
     final repo = ref.read(accountRepositoryProvider);
     if (_memberId == null) {
@@ -65,31 +67,38 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       return;
     }
 
-    if (widget.accountId == null) {
-      final initial = double.tryParse(_balanceController.text);
-      await repo.create(
-        memberId: _memberId!,
-        name: _nameController.text.trim(),
-        category: _category,
-        currency: _currency,
-        reminderIntervalDays: _reminderDays,
-        initialBalance: initial,
-      );
-    } else {
-      await repo.update(
-        id: widget.accountId!,
-        name: _nameController.text.trim(),
-        category: _category,
-        currency: _currency,
-        reminderEnabled: _reminderEnabled,
-        reminderIntervalDays: _reminderDays,
-      );
-    }
+    setState(() => _saving = true);
+    try {
+      if (widget.accountId == null) {
+        final initial = double.tryParse(_balanceController.text);
+        await repo.create(
+          memberId: _memberId!,
+          name: _nameController.text.trim(),
+          category: _category,
+          currency: _currency,
+          reminderIntervalDays: _reminderDays,
+          initialBalance: initial,
+        );
+      } else {
+        await repo.update(
+          id: widget.accountId!,
+          name: _nameController.text.trim(),
+          category: _category,
+          currency: _currency,
+          reminderEnabled: _reminderEnabled,
+          reminderIntervalDays: _reminderDays,
+        );
+      }
 
-    if (mounted) context.pop();
+      if (mounted) context.pop();
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+      rethrow;
+    }
   }
 
   Future<void> _delete() async {
+    if (_saving) return;
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -114,14 +123,24 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
 
     if (confirmed != true || !mounted) return;
 
-    final accountId = widget.accountId!;
-    await ref.read(accountRepositoryProvider).delete(accountId);
-    await NotificationScheduler(
-      ref.read(accountRepositoryProvider),
-      ref.read(settingsRepositoryProvider),
-    ).cancelForAccount(accountId);
+    setState(() => _saving = true);
+    try {
+      final accountId = widget.accountId!;
+      await ref.read(accountRepositoryProvider).delete(accountId);
+      try {
+        await NotificationScheduler(
+          ref.read(accountRepositoryProvider),
+          ref.read(settingsRepositoryProvider),
+        ).cancelForAccount(accountId).timeout(const Duration(seconds: 5));
+      } catch (e, st) {
+        debugPrint('Notification cancel skipped/failed: $e\n$st');
+      }
 
-    if (mounted) context.pop();
+      if (mounted) context.pop();
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+      rethrow;
+    }
   }
 
   @override
@@ -213,11 +232,20 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
             onChanged: (v) => setState(() => _reminderDays = v!),
           ),
           const SizedBox(height: 24),
-          FilledButton(onPressed: _save, child: Text(l10n.save)),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(l10n.save),
+          ),
           if (widget.accountId != null) ...[
             const SizedBox(height: 32),
             OutlinedButton(
-              onPressed: _delete,
+              onPressed: _saving ? null : _delete,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,
                 side: BorderSide(color: Theme.of(context).colorScheme.error),

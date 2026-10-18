@@ -33,6 +33,7 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
   final Map<int, double> _previousAmounts = {};
   List<Account> _accounts = [];
   bool _loading = true;
+  bool _submitting = false;
   bool _fetchingRates = false;
   bool _fetchFailed = false;
   bool _ratesAutoFilled = false;
@@ -61,11 +62,12 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
       _sourceNoteController.text = latest.sourceNote;
     }
 
-    final accounts = await ref.read(accountRepositoryProvider).watchActive().first;
+    final accountRepo = ref.read(accountRepositoryProvider);
+    final accounts = await accountRepo.watchActive().first;
+    final latestByAccount = await accountRepo.latestSnapshotByAccount();
     _accounts = accounts;
     for (final account in accounts) {
-      final latestSnap =
-          await ref.read(accountRepositoryProvider).latestSnapshot(account.id);
+      final latestSnap = latestByAccount[account.id];
       _amountControllers[account.id] = TextEditingController(
         text: latestSnap?.amount.toString() ?? '0',
       );
@@ -168,28 +170,39 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
   }
 
   Future<void> _submit() async {
-    final amounts = <int, double>{};
-    for (final account in _accounts) {
-      amounts[account.id] =
-          double.parse(_amountControllers[account.id]!.text.trim());
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    try {
+      final amounts = <int, double>{};
+      for (final account in _accounts) {
+        amounts[account.id] =
+            double.parse(_amountControllers[account.id]!.text.trim());
+      }
+
+      // Derived providers (home summary, trends, latest FX) watch the database
+      // directly, so they refresh on their own once this write commits.
+      await ref.read(sessionRepositoryProvider).createSession(
+            usdToCny: double.parse(_usdToCnyController.text),
+            usdToSgd: double.parse(_usdToSgdController.text),
+            sourceNote: _sourceNoteController.text.trim(),
+            accountAmounts: amounts,
+            changeMeta: _changeMeta,
+          );
+
+      try {
+        await NotificationScheduler(
+          ref.read(accountRepositoryProvider),
+          ref.read(settingsRepositoryProvider),
+        ).rescheduleAll().timeout(const Duration(seconds: 5));
+      } catch (e, st) {
+        debugPrint('Notification reschedule skipped/failed: $e\n$st');
+      }
+
+      if (mounted) context.pop();
+    } catch (_) {
+      if (mounted) setState(() => _submitting = false);
+      rethrow;
     }
-
-    // Derived providers (home summary, trends, latest FX) watch the database
-    // directly, so they refresh on their own once this write commits.
-    await ref.read(sessionRepositoryProvider).createSession(
-          usdToCny: double.parse(_usdToCnyController.text),
-          usdToSgd: double.parse(_usdToSgdController.text),
-          sourceNote: _sourceNoteController.text.trim(),
-          accountAmounts: amounts,
-          changeMeta: _changeMeta,
-        );
-
-    await NotificationScheduler(
-      ref.read(accountRepositoryProvider),
-      ref.read(settingsRepositoryProvider),
-    ).rescheduleAll();
-
-    if (mounted) context.pop();
   }
 
   @override
@@ -206,55 +219,76 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
       l10n.wizardStepPreview,
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(stepTitles[_step]),
-      ),
-      body: Stepper(
-        currentStep: _step,
-        onStepContinue: () async {
-          if (_step == 0) {
-            if (double.tryParse(_usdToCnyController.text) == null ||
-                double.tryParse(_usdToSgdController.text) == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.enterValidFxRates)),
-              );
-              return;
-            }
-            setState(() => _step = 1);
-          } else if (_step == 1) {
-            final ok = await _validateBalances();
-            if (ok) setState(() => _step = 2);
-          } else {
-            await _submit();
-          }
-        },
-        onStepCancel: () {
-          if (_step > 0) {
-            setState(() => _step -= 1);
-          } else {
-            context.pop();
-          }
-        },
-        controlsBuilder: (context, details) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Row(
-              children: [
-                FilledButton(
-                  onPressed: details.onStepContinue,
-                  child: Text(_step == 2 ? l10n.confirmSubmit : l10n.next),
-                ),
-                const SizedBox(width: 12),
-                if (_step > 0)
-                  TextButton(
-                    onPressed: details.onStepCancel,
-                    child: Text(l10n.previous),
+    return PopScope(
+      canPop: !_submitting,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(stepTitles[_step]),
+        ),
+        body: Stack(
+          children: [
+            Stepper(
+              currentStep: _step,
+              onStepContinue: _submitting
+                  ? null
+                  : () async {
+                      if (_step == 0) {
+                        if (double.tryParse(_usdToCnyController.text) == null ||
+                            double.tryParse(_usdToSgdController.text) == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l10n.enterValidFxRates)),
+                          );
+                          return;
+                        }
+                        setState(() => _step = 1);
+                      } else if (_step == 1) {
+                        setState(() => _submitting = true);
+                        try {
+                          final ok = await _validateBalances();
+                          if (ok && mounted) setState(() => _step = 2);
+                        } finally {
+                          if (mounted) setState(() => _submitting = false);
+                        }
+                      } else {
+                        await _submit();
+                      }
+                    },
+              onStepCancel: _submitting
+                  ? null
+                  : () {
+                      if (_step > 0) {
+                        setState(() => _step -= 1);
+                      } else {
+                        context.pop();
+                      }
+                    },
+              controlsBuilder: (context, details) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Row(
+                    children: [
+                      FilledButton(
+                        onPressed: _submitting ? null : details.onStepContinue,
+                        child: _submitting && _step == 2
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(_step == 2 ? l10n.confirmSubmit : l10n.next),
+                      ),
+                      const SizedBox(width: 12),
+                      if (_step > 0)
+                        TextButton(
+                          onPressed: _submitting ? null : details.onStepCancel,
+                          child: Text(l10n.previous),
+                        ),
+                    ],
                   ),
-              ],
-            ),
-          );
-        },
+                );
+              },
         steps: [
           Step(
             title: Text(l10n.fxSnapshot),
@@ -334,6 +368,18 @@ class _SnapshotWizardPageState extends ConsumerState<SnapshotWizardPage> {
             ),
           ),
         ],
+      ),
+            if (_submitting)
+              const Positioned.fill(
+                child: AbsorbPointer(
+                  child: ColoredBox(
+                    color: Colors.black26,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
