@@ -62,13 +62,15 @@ class NotificationScheduler {
     final l10n = lookupAppLocalizations(Locale(settings.localeLanguageCode));
 
     final accounts = await _accountRepo.watchActive().first;
+    final latestByAccount = await _accountRepo.latestSnapshotByAccount();
+    final now = DateTime.now();
     for (final account in accounts) {
       if (!account.reminderEnabled) continue;
-      final latest = await _accountRepo.latestSnapshot(account.id);
+      final latest = latestByAccount[account.id];
       final base = latest?.recordedAt ?? account.createdAt;
       final due = base.add(Duration(days: account.reminderIntervalDays));
-      final when = due.isBefore(DateTime.now())
-          ? DateTime.now().add(const Duration(hours: 1))
+      final when = due.isBefore(now)
+          ? now.add(const Duration(hours: 1))
           : due;
       await _schedule(account, when, l10n, latest);
     }
